@@ -1,0 +1,14 @@
+.expand-horizontal {
+    animation: expand-horizontal 5s linear forwards;
+}
+
+
+@keyframes expand-horizontal {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}

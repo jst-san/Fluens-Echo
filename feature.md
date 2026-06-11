@@ -1,0 +1,7 @@
+upload file auto generate form (front: ui)
+timeout (front: save date client-side)
+auto send (front: validating & timer)
+switch tab reset (full system)
+auto save answer local storage (id, answers JSON)
+shuffle question (full system)
+leaderboard (creator only)

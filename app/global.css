@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "./css/anim.module.css";
+
+:root {
+  --background: #eaeaea;
+  --background-light: #fafafa;
+  --foreground: #ffffff;
+  --brand: #0000ff;
+  --brand-dark: #0000c5;
+  --text: #202020;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--brand);
+  border-radius: 2.5px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-light: var(--background-light);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-text: var(--text);
+  --font-sans: var(--font-inter), sans;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #eaeaea;
+    --background-light: #fafafa;
+    --foreground: #ffffff;
+    --brand: #0000ff;
+    --brand-dark: #0000c5;
+    --text: #202020;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px
+  }
+}
+
+a,
+button,
+input[type="radio"],
+input[type="checkbox"],
+label {
+  @apply !cursor-pointer;
+}
+
+body {
+  @apply bg-background text-text;
+}
+
+html::-webkit-scrollbar {
+  @apply hidden;
+}
+
+@layer components {
+  .container {
+    @apply py-16 px-6 sm:px-8 md:px-16 !max-w-none;
+  }
+
+  .content {
+    @apply max-w-7xl mx-auto w-full;
+  }
+}

@@ -1,4 +1,9 @@
-import { Question, QuestionType, EditorForm } from "@/types/form";
+import { toCamel, toSnake } from "@/helpers/case-converter";
+import { AppError } from "@/lib/app-error";
+import { getSession } from "@/lib/client/auth";
+import { supabase } from "@/utils/supabase/client";
+import { SupabaseAuthError } from "@/lib/supabase-auth-error";
+import { Question, QuestionType, EditorForm, FormSettings } from "@/types/form";
 import { create } from "zustand";
 
 interface FormEditorStore {
@@ -7,6 +12,8 @@ interface FormEditorStore {
   newForm: () => void;
   setForm: (form: EditorForm) => void;
   updateForm: (data: Partial<EditorForm>) => void;
+  saveForm: () => Promise<EditorForm>;
+  updateSettings: (data: Partial<FormSettings>) => void;
   addQuestion: (position?: "last" | number) => void;
   updateQuestion: (questionId: string, data: Partial<Question>) => void;
   removeQuestion: (questionId: string) => void;
@@ -32,7 +39,7 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
     title: "",
     description: "",
     questions: [],
-    options: {},
+    settings: {},
     totalScore: null,
     shareToken: null,
   },
@@ -52,7 +59,7 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
           {
             id: "q" + Date.now().toString(),
             type: "radio",
-            title: "Pertanyaan tanpa judul",
+            title: "Pertanyaan baru",
             totalScore: 0,
             correctAnswers: [],
             options: [
@@ -62,7 +69,9 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
             required: false,
           },
         ],
-        options: {},
+        settings: {
+          isQuiz: true,
+        },
         totalScore: null,
         shareToken: null,
       },
@@ -79,22 +88,97 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
     }));
   },
 
-  addQuestion: (position = "last") => {
-    const newQuestion: Question = {
-      id: "q" + Date.now().toString(),
-      type: "radio",
-      title: "Pertanyaan tanpa judul",
-      totalScore: 0,
-      correctAnswers: [],
-      options: [
-        { id: "o" + Date.now().toString(), title: "Opsi 1" },
-        { id: "o" + (Date.now() + 300).toString(), title: "Opsi 2" },
-      ],
-      required: false,
-    };
+  saveForm: async () => {
+    const session = await getSession();
 
+    if (!session) {
+      throw new AppError({
+        message: "Silahkan login terlebih dahulu",
+        code: "UNATHORIZED",
+      });
+    }
+
+    const uid = session?.user.id;
+
+    const { form } = get();
+
+    let totalScore = 0;
+
+    form.questions.forEach((q) => {
+      totalScore += q.totalScore;
+    });
+
+    let data;
+
+    if (form.shareToken) {
+      const res = await supabase
+        .from("forms")
+        .update({
+          title: form.title,
+          description: form.description,
+          share_token: form.shareToken,
+          questions: form.questions,
+          settings: form.settings,
+          total_score: totalScore ?? null,
+        })
+        .eq("share_token", form.shareToken)
+        .eq("creator_id", uid)
+        .select(
+          "title, description, share_token, questions, settings, total_score",
+        )
+        .single();
+
+      if (res.error) {
+        throw new AppError(res.error);
+      }
+
+      data = res.data;
+    } else {
+      const res = await supabase
+        .from("forms")
+        .insert({
+          title: form.title,
+          description: form.description,
+          questions: form.questions,
+          settings: form.settings,
+          total_score: totalScore ?? null,
+        })
+        .select(
+          "title, description, share_token, questions, settings, total_score",
+        )
+        .single();
+
+      if (res.error) {
+        throw new AppError(res.error);
+      }
+
+      data = res.data;
+    }
+
+    return toCamel(data) as EditorForm;
+  },
+
+  updateSettings: (data) => {
+    set((s) => ({
+      form: { ...s.form, settings: { ...s.form.settings, ...data } },
+    }));
+  },
+
+  addQuestion: (position = "last") => {
     set((s) => {
       const questions = [...s.form.questions];
+      const newQuestion: Question = {
+        id: "q" + Date.now().toString(),
+        type: "radio",
+        title: "Pertanyaan baru",
+        totalScore: 0,
+        correctAnswers: [],
+        options: [
+          { id: "o" + Date.now().toString(), title: "Opsi 1" },
+          { id: "o" + (Date.now() + 300).toString(), title: "Opsi 2" },
+        ],
+        required: Boolean(s.form.settings.questionRequiredDefault),
+      };
       if (position === "last") {
         questions.push(newQuestion);
       } else if (typeof position === "number") {
@@ -140,10 +224,13 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
                     ? []
                     : q.options.length
                       ? q.options
-                      :[
-                        { id: "o" + Date.now().toString(), title: "Opsi 1" },
-                        { id: "o" + (Date.now() + 300).toString(), title: "Opsi 2" },
-                      ],
+                      : [
+                          { id: "o" + Date.now().toString(), title: "Opsi 1" },
+                          {
+                            id: "o" + (Date.now() + 300).toString(),
+                            title: "Opsi 2",
+                          },
+                        ],
               }
             : q,
         ),

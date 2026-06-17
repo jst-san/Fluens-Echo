@@ -1,6 +1,8 @@
+import { AppError } from "@/lib/app-error";
 import { getFormByToken } from "@/lib/server/form/repository";
 import { ApiResponse } from "@/lib/server/response";
 import { getSubmissionForm } from "@/lib/server/submission/services";
+import { SupabaseAuthError } from "@/lib/supabase-auth-error";
 import { Form } from "@/types/form";
 import { ClientSubmission } from "@/types/form";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,19 +14,29 @@ export async function GET(
   try {
     const { token } = await params;
 
-    if (!token) return ApiResponse.error(400);
+    if (!token) {
+      throw new AppError({
+        message: "Format tidak valid.",
+        code: "BAD_REQUEST",
+        status: 400,
+      });
+    }
 
-    const result = await getSubmissionForm(token);
+    const submissionForm = await getSubmissionForm(token);
 
-    if (!result.success)
-      return ApiResponse.error(
-        404,
-        "Formulir tidak ditemukan",
-        "FORM_NOT_FOUND",
-      );
+    if (!submissionForm)
+      throw new AppError({
+        status: 404,
+        message: "Formulir tidak ditemukan.",
+        code: "NOT_FOUND",
+      });
 
-    return ApiResponse.ok({submissionForm:result.data});
+    return ApiResponse.ok({ submissionForm });
   } catch (err) {
-    return ApiResponse.error(500);
+    if (err instanceof AppError || err instanceof SupabaseAuthError) {
+      return ApiResponse.error(err.status ?? 500, err);
+    } else {
+      return ApiResponse.error(500);
+    }
   }
 }

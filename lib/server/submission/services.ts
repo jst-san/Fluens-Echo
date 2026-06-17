@@ -7,11 +7,17 @@ import {
 import { getFormByToken } from "../form/repository";
 import { createSubmission } from "./repository";
 import { createHash } from "crypto";
+import { AppError } from "@/lib/app-error";
 
 export async function saveSubmission(responseForm: ClientSubmission) {
   const form = await getFormByToken(responseForm.shareToken);
 
-  if (!form) throw new Error("Data empty");
+  if (!form)
+    throw new AppError({
+      message: "Formulir ini tidak dapat diakses.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
 
   const submissionData: Submission["data"] = {
     title: form.title,
@@ -32,25 +38,29 @@ export async function saveSubmission(responseForm: ClientSubmission) {
           a: q.totalScore / q.correctAnswers.length,
         }),
     );
-    submissionData.submissionQuestions = responseForm.submissionQuestions.map((r) => {
-      const sc = scoreObj[r.id];
+    submissionData.submissionQuestions = responseForm.submissionQuestions.map(
+      (r) => {
+        const sc = scoreObj[r.id];
 
-      if (!sc) return r;
-      let score = 0;
-      if (r.type === "checkbox") {
-        r.answers.forEach((a: string) => {
-          if (sc.ca.includes(a)) score += sc.a;
-        });
-      } else {
-        r.type === "text"
-          ? sc.ca
-              .map((ca) => ca.toLowerCase())
-              .includes(r.answers.toLowerCase()) && (score = sc.ts)
-          : sc.ca.includes(r.answers) && (score = sc.ts);
-      }
-      submissionData.score ? (submissionData.score += score) : (submissionData.score = score);
-      return { ...r, correctAnswers: sc.ca, totalScore: sc.ts, score };
-    });
+        if (!sc) return r;
+        let score = 0;
+        if (r.type === "checkbox") {
+          r.answers.forEach((a: string) => {
+            if (sc.ca.includes(a)) score += sc.a;
+          });
+        } else {
+          r.type === "text"
+            ? sc.ca
+                .map((ca) => ca.toLowerCase())
+                .includes(r.answers.toLowerCase()) && (score = sc.ts)
+            : sc.ca.includes(r.answers) && (score = sc.ts);
+        }
+        submissionData.score
+          ? (submissionData.score += score)
+          : (submissionData.score = score);
+        return { ...r, correctAnswers: sc.ca, totalScore: sc.ts, score };
+      },
+    );
 
     submissionData.totalScore = form.totalScore;
   } else {
@@ -59,21 +69,30 @@ export async function saveSubmission(responseForm: ClientSubmission) {
 
   const data = await createSubmission({
     formId: form.id,
-    data:submissionData,
+    data: submissionData,
   });
 
-  return !form.options.allowSeeResult ? data : {};
+  return form.settings.allowSeeResult ? data : {};
 }
 
 export async function getSubmissionForm(token: string) {
-  console.log(token);
-  if (!token) return { success: false };
+  if (!token) {
+    throw new AppError({
+      message: "Format request tidak valid.",
+      code: "BAD_REQUEST",
+      status: 400,
+    });
+  }
 
   const form = await getFormByToken(token);
 
-  console.error("getSubmission:", form);
-
-  if (!form) return { success: false, data: {} };
+  if (!form) {
+    throw new AppError({
+      message: "Formulir tidak ditemukan.",
+      code: "NOT_FOUND",
+      status: 404,
+    });
+  }
 
   const submissionForm: ClientSubmission = {
     title: form.title,
@@ -87,8 +106,8 @@ export async function getSubmissionForm(token: string) {
       question.score = q.totalScore ? 0 : null;
       return question as SubmissionQuestion;
     }),
-    options: form.options,
+    settings: form.settings,
   };
 
-  return { success: true, data: submissionForm };
+  return submissionForm;
 }

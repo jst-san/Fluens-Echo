@@ -1,24 +1,18 @@
-import type { ClientForm, Form } from "@/types/form";
+import { AppError } from "@/lib/app-error";
 import { ClientSubmission } from "@/types/form";
 
 import { create } from "zustand";
-import { useShallow } from "zustand/react/shallow";
-
-// Reminder
-// trim before saving
 
 interface FormSubmissionStore {
   form: ClientSubmission | null;
-  status: "none" | "sending" | "sent" | "error" | "loading";
   validated: boolean;
-  getByToken: (shareToken: string) => void;
+  setForm: (data: ClientSubmission) => void;
   updateAnswers: (
     questionId: string,
     answer: string,
     condition?: boolean,
   ) => void;
   validate: () => void;
-  submit: () => void;
 }
 
 export const useFormSubmissionStore = create<FormSubmissionStore>(
@@ -26,7 +20,6 @@ export const useFormSubmissionStore = create<FormSubmissionStore>(
     // === STATE === //
 
     form: null,
-    status: "none",
     validated: false,
 
     // === ACTIONS === //
@@ -56,17 +49,9 @@ export const useFormSubmissionStore = create<FormSubmissionStore>(
       });
       validate();
     },
-    getByToken: async (shareToken) => {
-      set({ status: "loading" });
-      const res = await fetch(`/api/form/${shareToken}/public`);
 
-      if (!res.ok) return set({ status: "none" });
-
-      const payload = await res.json();
-
-      if (!payload.success) return set({ status: "none" });
-
-      set({ form: payload.data.submissionForm, status: "none" });
+    setForm: (data) => {
+      set({ form: data });
     },
 
     validate: () => {
@@ -80,28 +65,6 @@ export const useFormSubmissionStore = create<FormSubmissionStore>(
           q.answers.trim() === "" && (validated = false);
         });
       set({ validated });
-    },
-    submit: async () => {
-      const { status, form, validated } = get();
-
-      if (status === "sending") return;
-
-      set({ status: "sending" });
-
-      if (!validated) return set({ status: "none" });
-
-      const res = await fetch("/api/submission", {
-        method: "post",
-        body: JSON.stringify({
-          submission: form,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) return set({ status: "error" });
-
-      set({ status: "sent" });
     },
   }),
 );

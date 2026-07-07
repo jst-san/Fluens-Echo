@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Fluens Form",
+  title: "Fluens Echo",
 };
 
 export default function RootLayout({

@@ -4,13 +4,6 @@ import HeaderProfile from "@/app/components/ui/profiles/HeaderProfile";
 import { supabase } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import {
-  LuChevronLeft,
-  LuMenu,
-  LuPanelLeft,
-  LuPanelLeftClose,
-  LuPanelLeftOpen,
-} from "react-icons/lu";
 
 export default function DashboardLayout({
   children,
@@ -18,7 +11,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [user, setUser] = useState<User | null>(null);
-  const [openSide, setOpenSide] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -30,53 +22,25 @@ export default function DashboardLayout({
     })();
   }, []);
   return (
-    <div className="">
-      <div className="">
-        <header className="fixed inset-0 w-full h-max px-6 bg-foreground border-b border-border z-500">
-          <div className="h-20 flex items-center justify-between">
-            <div className="flex items-center">
-              <button
-                className="p-2 rounded-full hover:bg-muted-light"
-                onClick={() => setOpenSide(true)}
-              >
-                <LuMenu size={24} />
-              </button>
-              <div className="ml-2 font-light tracking-widest text-2xl text-transparent bg-linear-to-l from-brand-light via-brand to-brand-dark bg-clip-text">
-                Form
+    <div>
+      <header className="fixed inset-0 w-full h-max px-3 sm:px-6 bg-foreground border-b border-border z-500">
+        <div className="h-20 flex items-center justify-between">
+          <a className="flex items-center" href="/">
+            <img src="/fluens.png" className="w-16" />
+            <div className="ml-2">
+              <div className="font-black tracking-widest leading-5 text-2xl text-transparent bg-linear-to-bl from-brand-light via-brand to-brand-dark bg-clip-text">
+                Echo
+              </div>
+              <hr className="border-brand my-1 rounded-full" />
+              <div className="font-bold tracking-widest leading-2 text-[0.5rem] text-brand-light">
+                FORM BUILDER
               </div>
             </div>
-            <HeaderProfile {...{ user }} />
-          </div>
-        </header>
-        <aside
-          className={`${!openSide && "-translate-x-full"} duration-300 fixed inset-0 z-1000 w-64 h-screen flex flex-col bg-foreground border-r border-border`}
-        >
-          <div className="sticky top-0 h-screen">
-            <div className="h-20 px-2 flex items-center justify-between">
-              <div className="flex items-center">
-                <img src="/fluens.png" className="w-16" />
-                <div className="font-light tracking-widest text-2xl text-transparent bg-linear-to-l from-brand-light via-brand to-brand-dark bg-clip-text">
-                  Form
-                </div>
-              </div>
-            </div>
-            <div className="w-full flex-1 overflow-auto">
-              <div className="w-full h-max min-h-screen"></div>
-            </div>
-          </div>
-          
-          <button hidden={!openSide} className="absolute top-1/2 left-full -translate-1/2 bg-foreground py-2 rounded-full border border-border hover:bg-muted-light" onClick={() => setOpenSide(false)}>
-            <LuChevronLeft size={24} />
-          </button>
-        </aside>
-        {openSide && (
-          <div
-            className="fixed inset-0 z-999"
-            onClick={() => setOpenSide(false)}
-          ></div>
-        )}
-        <div className="">{children}</div>
-      </div>
+          </a>
+          <HeaderProfile {...{ user }} />
+        </div>
+      </header>
+      <div>{children}</div>
     </div>
   );
 }

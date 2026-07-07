@@ -2,7 +2,24 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LuPlus, LuSearch, LuX } from "react-icons/lu";
+import {
+  LuAArrowDown,
+  LuArrowDown,
+  LuArrowDownAZ,
+  LuArrowDownWideNarrow,
+  LuArrowUp,
+  LuArrowUpAZ,
+  LuArrowUpDown,
+  LuArrowUpWideNarrow,
+  LuCalendar,
+  LuCalendar1,
+  LuChevronsUpDown,
+  LuListFilter,
+  LuPlus,
+  LuSearch,
+  LuSquareArrowDown,
+  LuX,
+} from "react-icons/lu";
 import { PrimaryBtn, SecondaryBtn } from "../../../components/ui/buttons";
 import { useEffect, useState } from "react";
 import { Form } from "@/types/form";
@@ -20,6 +37,7 @@ import {
   FaMeh,
   FaMehBlank,
   FaSearch,
+  FaSortAlphaDown,
   FaThList,
 } from "react-icons/fa";
 import { TextInput } from "@/app/components/ui/inputs";
@@ -35,6 +53,11 @@ export default function Home() {
   const [error, setError] = useState<{ message: string; code: string } | null>(
     null,
   );
+  const [sortBy, setSortBy] = useState<"modified" | "created" | "title">(
+    "modified",
+  );
+  const [sortMode, setSortMode] = useState<"desc" | "asc">("desc");
+  const [openSortBy, setOpenSortBy] = useState(false);
 
   const displayedForms = forms?.filter((f) =>
     searchKeyword !== ""
@@ -70,6 +93,29 @@ export default function Home() {
     }
   };
 
+  const sort = (forms: Partial<Form>[]) => {
+    const isDesc = sortMode === "desc";
+    if (sortBy === "modified") {
+      return forms.sort((a, b) => {
+        const aTime = Date.parse(a.updatedAt ?? a.createdAt!);
+        const bTime = Date.parse(b.updatedAt ?? b.createdAt!);
+        return isDesc ? bTime - aTime : aTime - bTime;
+      });
+    } else if (sortBy === "created") {
+      return forms.sort((a, b) => {
+        const aTime = Date.parse(a.createdAt!);
+        const bTime = Date.parse(b.createdAt!);
+        return isDesc ? bTime - aTime : aTime - bTime;
+      });
+    } else if (sortBy === "title") {
+      return forms.sort((a, b) =>
+        isDesc
+          ? b.title!.localeCompare(a.title!)
+          : a.title!.localeCompare(b.title!),
+      );
+    } else return forms;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -88,38 +134,103 @@ export default function Home() {
           toCamel(f),
         ) as Partial<Form>[];
 
-        if (!forms?.length) return;
-
         setForms(forms);
       } catch (err) {}
     })();
   }, []);
   return (
-    <div className="container min-h-screen flex pt-26">
-      <div className="mx-auto w-full max-w-6xl flex flex-col gap-6">
-        <div className="relative flex items-center">
-          <TextInput
-            className="bg-foreground pl-12 peer"
-            type="text"
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="Cari"
-          />
-          <LuSearch
-            className="absolute left-4 text-muted-dark peer-focus-within:text-brand transition-colors"
-            size={20}
-          />
-        </div>
+    <div className="px-3 sm:px-6 py-6 min-h-screen flex pt-23 sm:pt-26">
+      <div className="mx-auto w-full max-w-6xl flex flex-col gap-3 sm:gap-6">
         <button
-          className="w-full flex items-center justify-center p-4 border border-border text-foreground bg-brand hover:bg-brand-light transition-all rounded-3xl"
+          className="w-full flex items-center justify-center gap-3 p-4 rounded-3xl text-white bg-linear-to-r from-brand-dark via-brand to-brand border border-border hover:brightness-105 active:scale-[0.99] transition-all duration-300 hover:shadow-[0_0_0_5px_var(--brand)]/12 active:shadow-[0_0_0_5px_var(--brand)]/12"
           onClick={() => router.push("/app/form/new/edit")}
         >
-          <LuPlus className="stroke-1" size={48} />
-          <div className="text-2xl font-light">Form Baru</div>
+          <LuPlus size={48} strokeWidth={2.5} />
+          <span className="text-3xl font-semibold">Form Baru</span>
         </button>
-        {forms ? (
+        <div className="w-full flex gap-3 sm:gap-6 flex-col sm:flex-row">
+          <div className="relative flex-1 flex items-center">
+            <TextInput
+              className="bg-foreground pl-12 peer"
+              type="text"
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="Cari"
+            />
+            <LuSearch
+              className="absolute left-4 text-muted-dark peer-focus-within:text-brand transition-colors"
+              size={20}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <div className="relative">
+              {openSortBy && (
+                <div
+                  className="fixed inset-0 z-100"
+                  onClick={() => setOpenSortBy(false)}
+                ></div>
+              )}
+              <button
+                className={`relative p-2 rounded-full transition-colors ${openSortBy ? "z-100! bg-muted text-brand" : "hover:bg-muted/30 active:bg-muted"}`}
+                onClick={() => setOpenSortBy(!openSortBy)}
+              >
+                <LuChevronsUpDown size={18} />
+              </button>
+              {openSortBy && (
+                <div className="absolute top-full right-0 mt-2 min-w-50 w-max bg-foreground z-100 border border-border shadow-lg rounded-3xl p-2">
+                  <div className="flex flex-col gap-1 relative">
+                    <div className="px-4 h-11 flex items-center gap-3 text-sm">
+                      Urutkan menurut :
+                    </div>
+                    <button
+                      className={`px-4 h-11 flex items-center gap-3 rounded-full text-sm hover:bg-brand-light/10 transition-colors group ${sortBy === "modified" && "text-brand"}`}
+                      onClick={() => {
+                        setSortBy("modified");
+                        setOpenSortBy(false);
+                      }}
+                    >
+                      <LuCalendar size={18} />
+                      Terakhir diubah
+                    </button>
+                    <button
+                      className={`px-4 h-11 flex items-center gap-3 rounded-full text-sm hover:bg-brand-light/10 transition-colors group ${sortBy === "created" && "text-brand"}`}
+                      onClick={() => {
+                        setSortBy("created");
+                        setOpenSortBy(false);
+                      }}
+                    >
+                      <LuCalendar size={18} />
+                      Terakhir dibuat
+                    </button>
+                    <button
+                      className={`px-4 h-11 flex items-center gap-3 rounded-full text-sm hover:bg-brand-light/10 transition-colors group ${sortBy === "title" && "text-brand"}`}
+                      onClick={() => {
+                        setSortBy("title");
+                        setOpenSortBy(false);
+                      }}
+                    >
+                      <LuAArrowDown size={18} />
+                      Judul
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
+              className="p-2 rounded-full transition-colors hover:bg-muted/30 active:bg-muted"
+              onClick={() => setSortMode(sortMode === "desc" ? "asc" : "desc")}
+            >
+              {sortMode === "desc" ? (
+                <LuArrowDown size={18} />
+              ) : (
+                <LuArrowUp size={18} />
+              )}
+            </button>
+          </div>
+        </div>
+        {forms !== null ? (
           displayedForms?.length ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-              {displayedForms.map((f) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {sort(displayedForms).map((f) => (
                 <FormCard
                   key={f.shareToken!}
                   {...f}
@@ -143,9 +254,12 @@ export default function Home() {
             </div>
           )
         ) : (
-          <div className="grid grid-cols-1 min-[462px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {Array.from({ length: 4 }).map((_, idx) => (
-              <SkeletonFormCard key={idx} className="last:md:hidden last:xl:flex" />
+              <SkeletonFormCard
+                key={idx}
+                className="last:md:hidden last:xl:flex"
+              />
             ))}
           </div>
         )}

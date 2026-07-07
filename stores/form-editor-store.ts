@@ -3,8 +3,16 @@ import { AppError } from "@/lib/app-error";
 import { getSession } from "@/lib/client/auth";
 import { supabase } from "@/utils/supabase/client";
 import { SupabaseAuthError } from "@/lib/supabase-auth-error";
-import { Question, QuestionType, EditorForm, FormSettings } from "@/types/form";
+import {
+  Question,
+  QuestionType,
+  EditorForm,
+  FormSettings,
+  QuestionGrid,
+} from "@/types/form";
 import { create } from "zustand";
+import { arrayMove } from "@dnd-kit/sortable";
+import { UniqueIdentifier } from "@dnd-kit/core";
 
 interface FormEditorStore {
   form: EditorForm;
@@ -14,10 +22,14 @@ interface FormEditorStore {
   updateForm: (data: Partial<EditorForm>) => void;
   saveForm: () => Promise<EditorForm>;
   updateSettings: (data: Partial<FormSettings>) => void;
-  addQuestion: (position?: "last" | number) => void;
+  addQuestion: (position?: "last" | number, data?: Question) => void;
   updateQuestion: (questionId: string, data: Partial<Question>) => void;
+  moveQuestion: (activeId: UniqueIdentifier, overId: UniqueIdentifier) => void;
+  moveQuestionByIndex: (prevIdx:number, newIdx:number) => void;
   removeQuestion: (questionId: string) => void;
   changeQuestionType: (questionId: string, newType: QuestionType) => void;
+  changeQuestionScore: (questionId: string, newScore: number) => void;
+  insertToQuestion: (questionId: string, data: Question["attached"]) => void;
   addQuestionOption: (questionId: string, title?: string) => void;
   updateQuestionOptionTitle: (
     questionId: string,
@@ -30,6 +42,26 @@ interface FormEditorStore {
     correct?: boolean,
   ) => void;
   removeQuestionOption: (questionId: string, optionId: string) => void;
+  addRow: (questionId: string) => void;
+  addCol: (questionId: string) => void;
+  editRow: (
+    questionId: string,
+    rowId: string,
+    data: Partial<{ id: string; title: string; totalScore: number }>,
+  ) => void;
+  editCol: (
+    questionId: string,
+    colId: string,
+    data: Partial<{ id: string; title: string }>,
+  ) => void;
+  linkAnswer: (
+    questionId: string,
+    rowId: string,
+    colId: string,
+    condition?: boolean,
+  ) => void;
+  deleteRow: (questionId: string, rowId: string) => void;
+  deleteCol: (questionId: string, colId: string) => void;
 }
 
 export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
@@ -39,8 +71,17 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
     title: "",
     description: "",
     questions: [],
-    settings: {},
-    totalScore: null,
+    settings: {
+      isQuiz: false,
+      allowSeeWrongAnswers: true,
+      allowSeeCorrectAnswers: true,
+      allowSeeScore: true,
+      defaultScoreValue: 0,
+      shuffleQuestions: false,
+      allowSeeResult: false,
+      questionRequiredDefault: false,
+    },
+    totalScore: 0,
     shareToken: null,
   },
 
@@ -62,17 +103,22 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
             title: "Pertanyaan baru",
             totalScore: 0,
             correctAnswers: [],
-            options: [
-              { id: "o" + Date.now().toString(), title: "Opsi 1" },
-              { id: "o" + (Date.now() + 300).toString(), title: "Opsi 2" },
-            ],
+            options: [{ id: "o" + Date.now().toString(), title: "Opsi 1" }],
+            grid: { rows: [], columns: [] },
             required: false,
           },
         ],
         settings: {
-          isQuiz: true,
+          isQuiz: false,
+          allowSeeWrongAnswers: true,
+          allowSeeCorrectAnswers: true,
+          allowSeeScore: true,
+          defaultScoreValue: 0,
+          shuffleQuestions: false,
+          allowSeeResult: false,
+          questionRequiredDefault: false,
         },
-        totalScore: null,
+        totalScore: 0,
         shareToken: null,
       },
     });
@@ -164,19 +210,28 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
     }));
   },
 
-  addQuestion: (position = "last") => {
+  addQuestion: (position = "last", data) => {
+    if (data)
+      return set((s) => ({
+        form: {
+          ...s.form,
+          questions:
+            position === "last"
+              ? [...s.form.questions, data]
+              : [...s.form.questions.splice(position, 0, data)],
+          totalScore: s.form.totalScore + data.totalScore,
+        },
+      }));
     set((s) => {
       const questions = [...s.form.questions];
       const newQuestion: Question = {
         id: "q" + Date.now().toString(),
         type: "radio",
         title: "Pertanyaan baru",
-        totalScore: 0,
+        totalScore: s.form.settings.defaultScoreValue ?? 0,
         correctAnswers: [],
-        options: [
-          { id: "o" + Date.now().toString(), title: "Opsi 1" },
-          { id: "o" + (Date.now() + 300).toString(), title: "Opsi 2" },
-        ],
+        options: [{ id: "o" + Date.now().toString(), title: "Opsi 1" }],
+        grid: { rows: [], columns: [] },
         required: Boolean(s.form.settings.questionRequiredDefault),
       };
       if (position === "last") {
@@ -184,54 +239,197 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
       } else if (typeof position === "number") {
         questions.splice(position, 0, newQuestion);
       }
-      return { form: { ...s.form, questions } };
+      const totalScore = s.form.totalScore + s.form.settings.defaultScoreValue;
+      return { form: { ...s.form, questions, totalScore } };
     });
   },
 
-  updateQuestion: (id, data) => {
-    set((state) => ({
+  updateQuestion: (questionId, data) => {
+    set((s) => ({
       form: {
-        ...state.form,
-        questions: state.form.questions.map((q) =>
-          q.id === id ? { ...q, ...data } : q,
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId ? { ...q, ...data } : q,
         ),
       },
     }));
   },
 
+  moveQuestion: (activeId, overId) => {
+    set((s) => {
+      const prevIdx = s.form.questions.findIndex((q) => q.id === activeId);
+
+      const newIdx = s.form.questions.findIndex((q) => q.id === overId);
+
+      if (prevIdx === -1 || newIdx === -1) return {};
+
+      return {
+        form: {
+          ...s.form,
+          questions: arrayMove(s.form.questions, prevIdx, newIdx),
+        },
+      };
+    });
+  },
+
+  moveQuestionByIndex: (prevIdx, newIdx) => {
+    set((s) => {
+      if (
+        prevIdx > s.form.questions.length - 1 ||
+        newIdx > s.form.questions.length - 1
+      )
+        return {};
+
+      return {
+        form: {
+          ...s.form,
+          questions: arrayMove(s.form.questions, prevIdx, newIdx),
+        },
+      };
+    });
+  },
+
   removeQuestion: (questionId) => {
+    set((s) => {
+      const questions = s.form.questions;
+      const totalScore =
+        s.form.totalScore -
+        (questions.find((q) => q.id === questionId)?.totalScore ?? 0);
+      return {
+        form: {
+          ...s.form,
+          questions: questions.filter((q) => q.id !== questionId),
+          totalScore,
+        },
+      };
+    });
+  },
+
+  changeQuestionType: (questionId, newType) => {
+    set((s) => {
+      let totalScoreAfter: number = s.form.totalScore;
+      const formatQuestion = (q: Question) => {
+        let formatted = q;
+
+        if (newType === q.type) return formatted;
+
+        if (newType === "text") {
+          formatted = {
+            ...q,
+            type: newType,
+            correctAnswers: [],
+            options: [],
+            grid: { rows: [], columns: [] },
+          };
+        }
+
+        if (newType === "radio" || newType === "checkbox") {
+          formatted = {
+            ...q,
+            type: newType,
+            correctAnswers: [],
+            options: q.options.length
+              ? q.options
+              : [
+                  {
+                    id: "o" + Date.now().toString(),
+                    title: "Opsi 1",
+                  },
+                ],
+            grid: { rows: [], columns: [] },
+          };
+        }
+
+        if (newType === "select") {
+          formatted = {
+            ...q,
+            totalScore: 0,
+            type: newType,
+            correctAnswers: [],
+            options: q.options.length
+              ? q.options
+              : [
+                  {
+                    id: "o" + Date.now().toString(),
+                    title: "Opsi 1",
+                  },
+                ],
+            grid: { rows: [], columns: [] },
+          };
+          totalScoreAfter -= q.totalScore;
+        }
+
+        if (newType === "grid-radio" || newType === "grid-checkbox") {
+          formatted = {
+            ...q,
+            totalScore: 0,
+            type: newType,
+            correctAnswers: [],
+            options: [],
+            grid: {
+              rows: q.grid.rows.length
+                ? q.grid.rows
+                : [
+                    {
+                      id: "r" + Date.now().toString(),
+                      title: "Baris 1",
+                      totalScore: 0,
+                    },
+                  ],
+              columns: q.grid.columns.length
+                ? q.grid.columns
+                : [
+                    {
+                      id: "c" + Date.now().toString(),
+                      title: "Kolom 1",
+                    },
+                  ],
+            },
+          };
+          totalScoreAfter -= q.totalScore;
+        }
+
+        return formatted;
+      };
+      return {
+        form: {
+          ...s.form,
+          questions: s.form.questions.map((q) =>
+            q.id === questionId ? formatQuestion(q) : q,
+          ),
+          totalScore: totalScoreAfter,
+        },
+      };
+    });
+  },
+
+  changeQuestionScore: (questionId, newScore) => {
+    const form = get().form;
+    const type = form.questions.find((q) => q.id === questionId)?.type;
+    if (type?.startsWith("grid")) return;
+    set({
+      form: {
+        ...form,
+        questions: form.questions.map((q) =>
+          q.id === questionId ? { ...q, ...{ totalScore: newScore } } : q,
+        ),
+      },
+    });
     set((s) => ({
       form: {
         ...s.form,
-        questions: s.form.questions.filter((q) => q.id !== questionId),
+        totalScore: s.form.questions.reduce((a, c) => (a += c.totalScore), 0),
       },
     }));
   },
 
-  changeQuestionType: (questionId, newType) => {
+  insertToQuestion: (questionId, data) => {
     set((s) => ({
       form: {
         ...s.form,
         questions: s.form.questions.map((q) =>
           q.id === questionId
-            ? {
-                ...q,
-                totalScore: 0,
-                type: newType,
-                correctAnswers: [],
-                options:
-                  newType === "text"
-                    ? []
-                    : q.options.length
-                      ? q.options
-                      : [
-                          { id: "o" + Date.now().toString(), title: "Opsi 1" },
-                          {
-                            id: "o" + (Date.now() + 300).toString(),
-                            title: "Opsi 2",
-                          },
-                        ],
-              }
+            ? { ...q, attached: { ...q.attached, ...data } }
             : q,
         ),
       },
@@ -279,7 +477,7 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
   },
 
   setAsCorrect: (questionId, correctAnswer, correct = true) => {
-    const allowedTypes = ["radio", "text", "checkbox"];
+    const allowedTypes = ["radio", "text", "checkbox", "select"];
     set((s) => ({
       form: {
         ...s.form,
@@ -289,28 +487,23 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
           if (!allowedTypes.includes(q.type)) return q;
 
           let correctAnswersAfter: string[];
-          let totalScoreAfter: number;
 
           if (correct) {
             if (q.correctAnswers.includes(questionId)) return q;
-            if (q.type === "radio") {
+            if (["radio", "select"].includes(q.type)) {
               correctAnswersAfter = [correctAnswer];
-              totalScoreAfter = correctAnswersAfter.length ? 1 : 0;
             } else if (q.type === "text") {
               correctAnswersAfter = correctAnswer
                 .split(";")
                 .map((ca) => ca.trim())
                 .filter((ca) => ca !== "");
-              totalScoreAfter = 1;
             } else {
               correctAnswersAfter = [...q.correctAnswers, correctAnswer];
-              totalScoreAfter = q.totalScore + 1;
             }
           } else {
             if (!q.correctAnswers.includes(correctAnswer)) return q;
             if (q.type === "radio") {
               correctAnswersAfter = [];
-              totalScoreAfter = 0;
             } else if (q.type === "text") {
               correctAnswersAfter = q.correctAnswers
                 .filter(
@@ -321,18 +514,15 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
                       .includes(ca),
                 )
                 .filter((ca) => ca !== "");
-              totalScoreAfter = correctAnswersAfter.length;
             } else {
               correctAnswersAfter = q.correctAnswers.filter(
                 (ca) => ca !== correctAnswer,
               );
-              totalScoreAfter = q.totalScore - 1;
             }
           }
 
           return {
             ...q,
-            totalScore: totalScoreAfter,
             correctAnswers: correctAnswersAfter,
           };
         }),
@@ -356,5 +546,180 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
         },
       };
     });
+  },
+
+  addRow: (questionId) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                grid: {
+                  rows: [
+                    ...q.grid.rows,
+                    {
+                      id: "r" + Date.now().toString(),
+                      title: `Baris ${q.grid.rows.length + 1}`,
+                      totalScore: 0,
+                    },
+                  ],
+                  columns: [...q.grid.columns],
+                },
+              }
+            : q,
+        ),
+      },
+    }));
+  },
+
+  addCol: (questionId) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                grid: {
+                  columns: [
+                    ...q.grid.columns,
+                    {
+                      id: "c" + Date.now().toString(),
+                      title: `Kolom ${q.grid.columns.length + 1}`,
+                    },
+                  ],
+                  rows: [...q.grid.rows],
+                },
+              }
+            : q,
+        ),
+      },
+    }));
+  },
+
+  editRow: (questionId, rowId, data) => {
+    let form = get().form;
+    let newQuestion = {
+      ...form.questions.find((q) => q.id === questionId),
+    };
+
+    newQuestion.grid = {
+      rows: newQuestion.grid?.rows.map((r) =>
+        r.id === rowId ? { ...r, ...data } : r,
+      )!,
+      columns: [...newQuestion.grid?.columns!],
+    };
+
+    if ("totalScore" in data) {
+      newQuestion!.totalScore = newQuestion.grid?.rows
+        .map((r) => r.totalScore)
+        .reduce((p, c) => (p += c), 0);
+    }
+
+    form = {
+      ...form,
+      questions: form.questions.map((q) =>
+        q.id === questionId ? newQuestion : q,
+      ),
+    } as EditorForm;
+
+    set({ form });
+
+    if ("totalScore" in data) {
+      set({
+        form: {
+          ...form,
+          totalScore: form.questions.reduce((a, c) => (a += c.totalScore), 0),
+        },
+      });
+    }
+  },
+
+  editCol: (questionId, colId, data) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                grid: {
+                  columns: q.grid.columns.map((c) =>
+                    c.id === colId ? { ...c, ...data } : c,
+                  ),
+                  rows: [...q.grid.rows],
+                },
+              }
+            : q,
+        ),
+      },
+    }));
+  },
+
+  linkAnswer: (questionId, rowId, colId, condition = true) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                correctAnswers: condition
+                  ? [
+                      ...q.correctAnswers.filter((a) =>
+                        q.type === "grid-radio" ? a[0] !== rowId : true,
+                      ),
+                      [rowId, colId],
+                    ]
+                  : q.correctAnswers.filter(
+                      (a) => !(a[0] === rowId && a[1] === colId),
+                    ),
+              }
+            : q,
+        ),
+      },
+    }));
+  },
+
+  deleteRow: (questionId, rowId) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                correctAnswers: q.correctAnswers.filter((a) => a[0] !== rowId),
+                grid: {
+                  rows: q.grid.rows.filter((r) => r.id !== rowId),
+                  columns: q.grid.columns,
+                },
+              }
+            : q,
+        ),
+      },
+    }));
+  },
+
+  deleteCol: (questionId, colId) => {
+    set((s) => ({
+      form: {
+        ...s.form,
+        questions: s.form.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                correctAnswers: q.correctAnswers.filter((a) => a[1] !== colId),
+                grid: {
+                  columns: q.grid.columns.filter((c) => c.id !== colId),
+                  rows: q.grid.rows,
+                },
+              }
+            : q,
+        ),
+      },
+    }));
   },
 }));

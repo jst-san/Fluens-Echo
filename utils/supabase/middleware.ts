@@ -35,18 +35,12 @@ export async function updateSession(req: NextRequest) {
   const currentPath = req.nextUrl.pathname
 
   if (!user && currentPath.startsWith('/app')) {
-    url.pathname = '/u/login'
+    url.pathname = '/get-started'
     url.searchParams.set('next', currentPath) 
     return NextResponse.redirect(url)
   }
 
-  if (!user && currentPath.startsWith('/form')) {
-    url.pathname = '/u/login'
-    url.searchParams.set('next', currentPath) 
-    return NextResponse.redirect(url)
-  }
-
-  if (user && currentPath.startsWith('/u/login')) {
+  if (user && currentPath.startsWith('/get-started')) {
     url.pathname = '/app' 
     return NextResponse.redirect(url)
   }

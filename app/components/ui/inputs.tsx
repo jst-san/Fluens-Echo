@@ -4,7 +4,7 @@ export function CheckInput(props: CheckInputProps) {
   return (
     <input
       {...props}
-      className="w-5 h-5 accent-brand border-border cursor-pointer"
+      className={`w-5 h-5 accent-brand border-border cursor-pointer ${props.className}`}
     />
   );
 }
@@ -18,6 +18,16 @@ export function TextInput(props: TextInputProps) {
   );
 }
 
+export function NumberInput(props:NumberInputProps) {
+  return (
+    <input
+      {...props}
+      type="number"
+      className={`text-center w-20 p-4 border border-border rounded-xl outline-none resize-none text-sm transition-[border-color,box-shadow] focus:bg-foreground focus:border-brand focus:shadow-[0_0_0_5px_var(--brand)]/12 ${props.className}`}
+    />
+  );
+}
+
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
 
 export interface CheckInputProps extends Omit<InputProps, "type"> {
@@ -27,3 +37,5 @@ export interface CheckInputProps extends Omit<InputProps, "type"> {
 export interface TextInputProps extends Omit<InputProps, "type"> {
   type: "text" | "email" | "password";
 }
+
+export interface NumberInputProps extends Omit<InputProps, "type"> {}

@@ -9,7 +9,10 @@
   --brand-dark: #005ed9;
   --text: #0f172a;
   --border: #e2e8f0;
+  --muted-light: #f8fafc;
   --muted: #e2e8f0;
+  --muted-dark: #d0d8e2;
+  --muted-darker: #64748b;
 }
 
 *::-webkit-scrollbar {
@@ -41,12 +44,16 @@
   }
 }
 
+*:disabled {
+  @apply pointer-events-none opacity-50;
+}
+
 a,
 button,
 input[type="radio"],
 input[type="checkbox"],
 label {
-  @apply cursor-pointer!;
+  @apply cursor-pointer;
 }
 
 body {
@@ -59,11 +66,10 @@ body {
 
 @layer components {
   .container {
-    @apply py-6 px-6 max-w-none!;
+    @apply py-8 px-6 sm:px-16 max-w-none!;
   }
 
   .content {
     @apply max-w-7xl mx-auto w-full;
   }
-  
 }

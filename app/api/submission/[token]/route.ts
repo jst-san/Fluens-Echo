@@ -28,7 +28,7 @@ export async function GET(
         code: "NOT_FOUND",
       });
 
-    return ApiResponse.ok({submission});
+    return ApiResponse.ok({submission: submission.data});
   } catch (err) {
     if (err instanceof AppError || err instanceof SupabaseAuthError) {
       return ApiResponse.error(err.status ?? 500, err);

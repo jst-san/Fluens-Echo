@@ -23,11 +23,12 @@ export async function saveSubmission(responseForm: ClientSubmission) {
     title: form.title,
     description: form.description,
     submissionQuestions: [],
-    score: null,
-    totalScore: null,
+    score: 0,
+    totalScore: 0,
+    settings: form.settings,
   };
 
-  if (form.totalScore) {
+  if (form.settings.isQuiz) {
     let scoreObj: Record<string, { ca: string[]; ts: number; a: number }> = {};
     form.questions.forEach(
       (q) =>
@@ -44,20 +45,80 @@ export async function saveSubmission(responseForm: ClientSubmission) {
 
         if (!sc) return r;
         let score = 0;
-        if (r.type === "checkbox") {
-          r.answers.forEach((a: string) => {
-            if (sc.ca.includes(a)) score += sc.a;
-          });
-        } else {
-          r.type === "text"
-            ? sc.ca
-                .map((ca) => ca.toLowerCase())
-                .includes(r.answers.toLowerCase()) && (score = sc.ts)
-            : sc.ca.includes(r.answers) && (score = sc.ts);
+
+        if (sc.ca.length) {
+          if (
+            ["radio", "select"].includes(r.type) &&
+            r.answers[0] === sc.ca[0]
+          ) {
+            score = sc.ts;
+          } else if (r.type === "checkbox") {
+            const sortedCorrectAnswers = sc.ca.sort();
+            const sortedAnswers = r.answers.sort();
+            if (
+              sortedCorrectAnswers.length === sortedAnswers.length &&
+              sortedCorrectAnswers.every((ca, idx) => ca === sortedAnswers[idx])
+            ) {
+              score = sc.ts;
+            }
+          } else if (r.type === "text") {
+            const answer = r.answers[0].trim().toLowerCase();
+            if (sc.ca.some((ca) => ca.trim().toLowerCase() === answer)) {
+              score = sc.ts;
+            }
+          } else if (r.type === "grid-radio") {
+            let scores: number[] = [];
+
+            r.grid.rows.forEach((row, rowIdx) => {
+              const matchedCorrectAnswers = sc.ca
+                .filter((ca) => ca[0] === row.id)
+                .sort();
+              const matchedAnswers = r.answers
+                .filter((a) => a[0] === row.id)
+                .sort();
+
+              if (matchedCorrectAnswers.length !== matchedAnswers.length)
+                return (scores[rowIdx] = 0);
+
+              if (!matchedCorrectAnswers.length) {
+                return (scores[rowIdx] = row.totalScore);
+              }
+
+              const isCorrect =
+                matchedCorrectAnswers[0][1] === matchedAnswers[0][1];
+              scores[rowIdx] = isCorrect ? row.totalScore : 0;
+            });
+
+            score = scores.reduce((p, c) => (p += c), 0);
+          } else if (r.type === "grid-checkbox") {
+            let scores: number[] = [];
+
+            r.grid.rows.forEach((row, rowIdx) => {
+              const matchedCorrectAnswers = sc.ca
+                .filter((ca) => ca[0] === row.id)
+                .sort();
+              const matchedAnswers = r.answers
+                .filter((a) => a[0] === row.id)
+                .sort();
+
+              if (matchedCorrectAnswers.length !== matchedAnswers.length)
+                return (scores[rowIdx] = 0);
+
+              if (!matchedCorrectAnswers.length) {
+                return (scores[rowIdx] = row.totalScore);
+              }
+
+              const isCorrect = matchedCorrectAnswers.every(
+                (ca, caIdx) => ca[1] === matchedAnswers[caIdx][1],
+              );
+              scores[rowIdx] = isCorrect ? row.totalScore : 0;
+            });
+
+            score = scores.reduce((p, c) => (p += c), 0);
+          }
         }
-        submissionData.score
-          ? (submissionData.score += score)
-          : (submissionData.score = score);
+
+        submissionData.score += score;
         return { ...r, correctAnswers: sc.ca, totalScore: sc.ts, score };
       },
     );
@@ -94,7 +155,7 @@ export async function getSubmissionForm(token: string) {
     });
   }
 
-  const submissionForm: ClientSubmission = {
+  let submissionForm: ClientSubmission = {
     title: form.title,
     description: form.description,
     shareToken: form.shareToken,
@@ -108,6 +169,16 @@ export async function getSubmissionForm(token: string) {
     }),
     settings: form.settings,
   };
+
+  // Form Settings Handling
+  if (form.settings.shuffleQuestions) {
+    const sq = submissionForm.submissionQuestions;
+    for (let i = 0; i < submissionForm.submissionQuestions.length; i++) {
+      console.log(i, sq.length);
+      const r = Math.floor(Math.random() * (i + 1));
+      [sq[i], sq[r]] = [sq[r], sq[i]];
+    }
+  }
 
   return submissionForm;
 }

@@ -1,10 +1,7 @@
 import { AppError } from "@/lib/app-error";
-import { getFormByToken } from "@/lib/server/form/repository";
 import { ApiResponse } from "@/lib/server/response";
 import { getSubmissionForm } from "@/lib/server/submission/services";
 import { SupabaseAuthError } from "@/lib/supabase-auth-error";
-import { Form } from "@/types/form";
-import { ClientSubmission } from "@/types/form";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(

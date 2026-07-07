@@ -40,7 +40,7 @@ export default function FormCard({
   };
 
   return (
-    <div className="aspect-3/4 p-4 sm:p-6 min-h-full bg-foreground rounded-3xl border border-border flex flex-col relative">
+    <div className="aspect-3/4 p-4 sm:p-6 min-h-full bg-foreground rounded-xl sm:rounded-3xl border border-border flex flex-col relative">
       <div className="flex-1 grid place-content-center relative">
         <div className="relative min-[400px]:scale-150 min-[500px]:scale-175 sm:scale-200">
           <FaThList className="text-brand w-12 h-12" />
@@ -121,10 +121,10 @@ export default function FormCard({
         )}
 
         <button
-          className={`p-2 rounded-full hover:bg-muted-light z-1 ${openOptions && "z-99"}`}
+          className={`p-2 rounded-full transition-colors z-1 ${openOptions ? "z-99 bg-muted text-brand" : "hover:bg-muted-light active:bg-muted"}`}
           onClick={() => setOpenOptions(!openOptions)}
         >
-          <LuEllipsisVertical size={20} />
+          <LuEllipsisVertical size={18} />
         </button>
       </div>
     </div>
@@ -133,7 +133,7 @@ export default function FormCard({
 
 export function SkeletonFormCard({className}:{className?:string}) {
   return (
-    <div className={`aspect-3/4 p-6 min-h-full bg-foreground rounded-3xl border border-border flex flex-col relative max-[400px]:text-[11px] ${className}`}>
+    <div className="aspect-3/4 p-4 sm:p-6 min-h-full bg-foreground rounded-xl sm:rounded-3xl border border-border flex flex-col relative">
       <div className="flex-1 grid place-content-center relative">
         <div className="relative min-[400px]:scale-150 min-[500px]:scale-175 sm:scale-200 animate-pulse">
           <FaThList className="text-muted w-12 h-12" />
@@ -149,12 +149,12 @@ export function SkeletonFormCard({className}:{className?:string}) {
         <div className="space-y-1">
           <div className="font-medium line-clamp-1 h-6 bg-muted-light rounded-md mb-2"></div>
           <div className="mb-2">
-            <div className="h-3 w-16 bg-muted-light rounded mb-1"></div>
-            <div className="h-3 w-32 bg-muted-light rounded"></div>
+            <div className="h-3 w-16 max-w-full bg-muted-light rounded mb-1"></div>
+            <div className="h-3 w-32 max-w-full bg-muted-light rounded"></div>
           </div>
           <div>
-            <div className="h-3 w-32 bg-muted-light rounded mb-1"></div>
-            <div className="h-3 w-24 bg-muted-light rounded"></div>
+            <div className="h-3 w-32 max-w-full bg-muted-light rounded mb-1"></div>
+            <div className="h-3 w-24 max-w-full bg-muted-light rounded"></div>
           </div>
         </div>
       </div>

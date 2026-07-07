@@ -7,7 +7,7 @@ export default function OptionLabel(
   return (
     <label
       {...props}
-      className={`relative flex items-center gap-4 p-4 rounded-3xl border transition-all cursor-pointer group ${props.className}`}
+      className={`flex items-center gap-4 p-5 rounded-3xl border border-border transition-all cursor-pointer group ${props.className}`}
     />
   );
 }

@@ -56,6 +56,7 @@ export default function GetStartedPage() {
       });
     } finally {
       setIsLoading(false);
+      router.refresh()
     }
   };
   return (

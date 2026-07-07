@@ -49,9 +49,6 @@ export default function Header() {
         </nav>
         <div className="sm:w-48">
           <PrimaryBtn
-            onClick={() => {
-              window.navigation.navigate("/get-started");
-            }}
           >
             Ayo mulai
           </PrimaryBtn>

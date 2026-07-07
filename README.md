@@ -22,8 +22,6 @@ One of its flagship features is **PDF to Form Extraction**, allowing users to ge
 
 ## 📸 Screenshots
 
-> Replace the placeholders below with actual screenshots.
-
 ### Dashboard
 
 ```
@@ -57,12 +55,20 @@ docs/screenshots/form-preview.png
 ### Analytics
 
 ```
-docs/screenshots/analytics.png
+docs/screenshots/analytics-summary.png
 ```
 
 ![Analytics Summary](docs/screenshots/analytics-summary.png)
 
+```
+docs/screenshots/analytics-questions.png
+```
+
 ![Analytics Questions](docs/screenshots/analytics-questions.png)
+
+```
+docs/screenshots/analytics-individual.png
+```
 
 ![Analytics Individual](docs/screenshots/analytics-individual.png)
 

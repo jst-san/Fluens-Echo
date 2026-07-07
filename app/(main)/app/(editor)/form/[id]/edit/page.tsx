@@ -1,15 +1,11 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Question from "../../components/Question";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useFormEditorStore } from "@/stores/form-editor-store";
 import { useShallow } from "zustand/react/shallow";
-import { LuPlus } from "react-icons/lu";
-import { ErrorModal, SuccessModal } from "../../components/modals";
+import { ErrorModal, SuccessModal } from "./components/modals";
 import { allowScroll, preventScroll } from "@/helpers/dom";
-import Textarea from "react-textarea-autosize";
-import { PrimaryBtn, SecondaryBtn } from "@/app/components/ui/buttons";
 import LoadingForm from "@/app/components/ui/loadingviews";
 import { supabase } from "@/utils/supabase/client";
 import { toCamel } from "@/helpers/case-converter";
@@ -18,33 +14,30 @@ import { getSession, getUser } from "@/lib/client/auth";
 import { SupabaseAuthError } from "@/lib/supabase-auth-error";
 import { AppError } from "@/lib/app-error";
 import AlertModal from "@/app/components/ui/AlertModal";
+import EditorHeader from "./components/EditorHeader";
+import ContentSection from "./components/ContentSection";
+import ResponsesSection from "./components/ResponsesSection";
+import SettingsSection from "./components/SettingsSection";
+
+export const TabContext = createContext({
+  activeTab: "content",
+  setActiveTab: (tabName: string) => {},
+});
 
 export default function SubmissionPage() {
   const { id } = useParams();
   const router = useRouter();
-
   const [status, setStatus] = useState("initialize");
   const [error, setError] = useState<{ message: string; code: string } | null>(
     null,
   );
-
   const [initError, setInitError] = useState<{
     message: string;
     code: string;
   } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("content");
 
-  const {
-    title,
-    description,
-    questions,
-    shareToken,
-    getForm,
-    newForm,
-    setForm,
-    updateForm,
-    addQuestion,
-    saveForm,
-  } = useFormEditorStore(
+  const { shareToken, newForm, setForm, saveForm } = useFormEditorStore(
     useShallow((s) => ({
       title: s.form.title,
       description: s.form.description,
@@ -58,6 +51,69 @@ export default function SubmissionPage() {
       saveForm: s.saveForm,
     })),
   );
+
+  useEffect(() => {
+    if (!id) router.replace("/form/new/edit");
+    if (id === "new") {
+      newForm();
+      return setStatus("editing");
+    }
+    (async () => {
+      const token = id;
+      try {
+        const session = await getSession();
+
+        if (!session)
+          throw new AppError({
+            message: "Silahkan login terlebih dahulu",
+            code: "UNATHORIZED",
+          });
+
+        const { data, error } = await supabase
+          .from("forms")
+          .select(
+            "share_token, title, description, questions, settings, total_score, created_at, updated_at",
+          )
+          .eq("share_token", token)
+          .eq("creator_id", session.user.id)
+          .single();
+
+        if (error) {
+          if (error.code === "PGRST116")
+            throw new AppError({
+              message: "Data tidak ada atau Anda tidak memiliki akses",
+              code: "NOT_FOUND",
+            });
+
+          if (error.code === "22P02")
+            throw new AppError({
+              message: "URL tidak valid",
+              code: "BAD_REQUEST",
+            });
+          throw new AppError(error);
+        }
+
+        setForm(toCamel(data) as EditorForm);
+
+        setStatus("editing");
+      } catch (err: any) {
+        if (err.code.toUpperCase() === "UNATHORIZED")
+          return router.replace(
+            `/u/login?redirect=${window.location.pathname}`,
+          );
+
+        if (err instanceof AppError || err instanceof SupabaseAuthError) {
+          return setInitError({ message: err.message, code: err.code });
+        }
+
+        setInitError({
+          message: "Terjadi kesalahan, coba lagi.",
+          code: "UNKNOWN_ERROR",
+        });
+        setStatus("error");
+      }
+    })();
+  }, [id]);
 
   const handleSaveForm = async () => {
     if (status === "saving") return;
@@ -77,7 +133,7 @@ export default function SubmissionPage() {
       setStatus("success");
 
       if (isCreating && finalToken) {
-        window.history.replaceState(null, "", `/form/${finalToken}/edit`);
+        window.history.replaceState(null, "", `app/form/${finalToken}/edit`);
       }
     } catch (err) {
       if (err instanceof AppError || err instanceof SupabaseAuthError) {
@@ -93,69 +149,20 @@ export default function SubmissionPage() {
     }
   };
 
-  const questionIds = questions.map((q) => q.id);
-return title ? (
-    <div className="pb-24">
-      <div className="md:px-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="space-y-6" spellCheck={false}>
-            <div className="relative bg-foreground rounded-4xl p-10 overflow-hidden border border-border shadow-lg">
-              <div className="absolute -top-30 -right-30 w-60 h-60 rounded-full bg-[radial-gradient(circle,rgba(22,139,255,0.15),transparent)]"></div>
+  if (initError) {
+    return AlertModal({ message: initError.message });
+  }
 
-              <div className="relative z-10">
-                <Textarea
-                  className="w-full text-3xl md:text-4xl font-bold tracking-tight mb-4 outline-none resize-none"
-                  minRows={1}
-                  defaultValue={title}
-                  onBlur={(e) =>
-                    updateForm({
-                      title: !title.trim()
-                        ? "Formulir Tanpa Judul"
-                        : e.target.value,
-                    })
-                  }
-                />
-                <Textarea
-                  className="w-full text-lg text-muted-darker leading-[1.8] overflow-hidden outline-none resize-none"
-                  defaultValue={description}
-                  onBlur={(e) => updateForm({ description: e.target.value })}
-                  placeholder="Deskripsi singkat (opsional)"
-                  minRows={1}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {questionIds.length ? (
-                questionIds.map((qId, qi) => (
-                  <Question key={qId} qId={qId} qi={qi} />
-                ))
-              ) : (
-                <div className="justify-self-center z-100 transition-all duration-300">
-                  <button
-                    type="button"
-                    className="h-12 w-12 flex items-center justify-center bg-linear-to-br from-brand-light via-brand to-brand-dark text-foreground rounded-full hover:-translate-y-1  shadow-xl transition-all"
-                    onClick={() => addQuestion()}
-                  >
-                    <LuPlus size={24} strokeWidth={2.5} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex px-4 md:px-0 gap-4 justify-end pt-10">
-              <SecondaryBtn onClick={() => router.back()}>
-                Kembali
-              </SecondaryBtn>
-              <PrimaryBtn
-                onClick={handleSaveForm}
-                disabled={status === "saving"}
-              >
-                {status === "saving" ? "Menyimpan..." : "Simpan"}
-              </PrimaryBtn>
-            </div>
-          </div>
-        </div>
+  return status !== "initialize" ? (
+    <TabContext.Provider value={{ activeTab, setActiveTab }}>
+      <EditorHeader
+        isSaving={status === "saving"}
+        handleSaveForm={handleSaveForm}
+      />
+      <div className="pt-33 sm:pt-36">
+        <ContentSection />
+        <ResponsesSection />
+        <SettingsSection />
       </div>
 
       {status === "success" && (
@@ -179,7 +186,7 @@ return title ? (
           }}
         />
       )}
-    </div>
+    </TabContext.Provider>
   ) : (
     <LoadingForm text="Membuka editor" />
   );

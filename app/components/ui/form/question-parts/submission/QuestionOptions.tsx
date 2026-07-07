@@ -9,7 +9,7 @@ import { LuChevronDown } from "react-icons/lu";
 
 export default function QuestionOptions(q: SubmissionQuestion) {
   const [openSelect, setOpenSelect] = useState(false);
-  const updateAnswers = useFormSubmissionStore((s) => s.updateAnswers);
+  const setAnswers = useFormSubmissionStore((s) => s.setAnswers);
 
   return (
     <>
@@ -27,7 +27,7 @@ export default function QuestionOptions(q: SubmissionQuestion) {
                   id={o.id}
                   type={q.type as any}
                   onChange={(e) => {
-                    updateAnswers(q.id, o.id, e.target.checked);
+                    setAnswers(q.id, o.id, e.target.checked);
                   }}
                   checked={isSelected}
                   name={q.id}
@@ -43,7 +43,7 @@ export default function QuestionOptions(q: SubmissionQuestion) {
             <button
               type="button"
               className="inline-block mt-2 px-2 py-1 text-sm text-muted-darker hover:text-brand font-medium transition-colors"
-              onClick={() => updateAnswers(q.id, q.answers, false)}
+              onClick={() => setAnswers(q.id, q.answers, false)}
             >
               Hapus jawaban
             </button>
@@ -60,21 +60,21 @@ export default function QuestionOptions(q: SubmissionQuestion) {
             ></div>
           )}
           <div
-            className={`w-full max-w-sm relative text-sm ${openSelect ? "z-110" : ""}`}
+            className={`w-full max-w-sm relative text-sm ${openSelect ? "z-100" : ""}`}
           >
             {" "}
             <button
               type="button"
-              className={`flex items-center justify-between px-6 w-full h-14.5 border rounded-full transition-all outline-none
+              className={`flex items-center justify-between px-6 w-full h-14 border rounded-full transition-all outline-none
                 ${openSelect ? "bg-foreground border-brand shadow-[0_0_0_5px_var(--brand)]/12" : "bg-brand-light/10 border-border hover:border-muted-dark"}
               `}
               onClick={() => setOpenSelect(!openSelect)}
             >
               <span className="text-left truncate">
-                {q.options.filter((o) => o.id === q.answers)[0]?.title ||
+                {q.options.find((o) => o.id === q.answers[0])?.title ||
                   "Pilih opsi..."}
               </span>
-              <LuChevronDown className="text-muted-darker" size={20} />
+              <LuChevronDown className="text-muted-darker" size={18} />
             </button>
             <div
               hidden={!openSelect || !q.options.length}
@@ -86,13 +86,13 @@ export default function QuestionOptions(q: SubmissionQuestion) {
                     <button
                       type="button"
                       key={o.id}
-                      className="w-full text-left px-5 py-3 rounded-4xl hover:bg-brand-light/10 transition-colors outline-none"
+                      className="w-full flex text-left px-5 py-3 rounded-4xl hover:bg-brand-light/10 transition-colors outline-none"
                       onClick={() => {
-                        updateAnswers(q.id, o.id);
+                        setAnswers(q.id, o.id);
                         setOpenSelect(false);
                       }}
                     >
-                      {o.title}
+                      <div className="min-h-9 flex items-center">{o.title}</div>
                     </button>
                   ))}
                 </div>
@@ -104,7 +104,7 @@ export default function QuestionOptions(q: SubmissionQuestion) {
             <button
               type="button"
               className="block mt-3 px-2 py-1 text-sm text-muted-darker hover:text-brand font-medium transition-colors"
-              onClick={() => updateAnswers(q.id, q.answers, false)}
+              onClick={() => setAnswers(q.id, q.answers, false)}
             >
               Hapus jawaban
             </button>

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Question from "./components/Question";
+import SubmissionQuestion from "@/app/components/ui/form/question-parts/submission/SubmissionQuestion";
 import { useFormSubmissionStore } from "@/stores/form-submission-store";
 import { LuCheck, LuCircleAlert } from "react-icons/lu";
 import { PrimaryBtn, SecondaryBtn } from "@/app/components/ui/buttons";
@@ -118,7 +118,7 @@ export default function SubmissionPage() {
                 {status === "sent" && result && (
                   <PrimaryBtn
                     className="w-full"
-                    onClick={() => router.push(`/result/${result}`)}
+                    onClick={() => window.open(`/r/${result}`, "_blank")}
                   >
                     Lihat hasil
                   </PrimaryBtn>
@@ -132,8 +132,8 @@ export default function SubmissionPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-6" spellCheck={false}>
-              <div className="relative bg-foreground rounded-4xl p-10 overflow-hidden border border-border shadow-lg">
+            <div className="space-y-6 whitespace-pre-line" spellCheck={false}>
+              <div className="relative bg-foreground rounded-4xl p-10 overflow-hidden border border-border">
                 <div className="absolute -top-30 -right-30 w-60 h-60 rounded-full bg-[radial-gradient(circle,rgba(22,139,255,0.15),transparent)]"></div>
                 <div className="relative z-10">
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 outline-none resize-none">
@@ -146,8 +146,8 @@ export default function SubmissionPage() {
               </div>
 
               <div className="space-y-6">
-                {form.submissionQuestions.map((q) => (
-                  <Question key={q.id} q={q} />
+                {form.submissionQuestions.map((q, qi) => (
+                  <SubmissionQuestion key={q.id} q={q} qi={qi}  />
                 ))}
               </div>
 

@@ -5,14 +5,14 @@ import { useFormSubmissionStore } from "@/stores/form-submission-store";
 import { SubmissionQuestion } from "@/types/form";
 
 export default function QuestionText(q: SubmissionQuestion) {
-  const updateAnswers = useFormSubmissionStore((s) => s.updateAnswers);
+  const setAnswers = useFormSubmissionStore((s) => s.setAnswers);
 
   return (
     <div className="relative">
       <PrimaryTextarea
-        defaultValue={q.answers as string}
+        defaultValue={q.answers[0]}
         placeholder="Ketik jawaban Anda di sini..."
-        onBlur={(e) => updateAnswers(q.id, e.target.value)}
+        onBlur={(e) => setAnswers(q.id, e.target.value)}
       />
     </div>
   );

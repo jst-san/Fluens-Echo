@@ -5,8 +5,8 @@ export interface Form {
   title: string;
   description: string;
   questions: Question[];
-  settings: Partial<FormSettings>;
-  totalScore: number | null;
+  settings: FormSettings;
+  totalScore: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,8 +18,8 @@ export interface DBForm {
   title: string;
   description: string;
   questions: Question[];
-  settings: Partial<FormSettings>;
-  total_score: number | null;
+  settings: FormSettings;
+  total_score: number;
   created_at: string;
   updated_at: string;
 }
@@ -34,8 +34,10 @@ export interface EditorForm {
   title: string;
   description: string;
   questions: Question[];
-  settings: Partial<FormSettings>;
-  totalScore: number | null;
+  settings: FormSettings;
+  totalScore: number;
+  createdAt?:string;
+  updatedAt?:string;
 }
 
 export interface DraftForm extends Omit<
@@ -43,11 +45,22 @@ export interface DraftForm extends Omit<
   "id" | "creatorId" | "shareToken" | "createdAt" | "updatedAt"
 > {}
 
-export type QuestionType = "text" | "radio" | "checkbox" | "select";
+export type QuestionType =
+  | "text"
+  | "radio"
+  | "checkbox"
+  | "select"
+  | "grid-radio"
+  | "grid-checkbox";
 
 export type QuestionOption = {
   id: string;
   title: string;
+};
+
+export type QuestionGrid = {
+  rows: { id: string; title: string; totalScore: number }[];
+  columns: { id: string; title: string }[];
 };
 
 export type Question = {
@@ -55,26 +68,28 @@ export type Question = {
   title: string;
   type: QuestionType;
   totalScore: number;
-  correctAnswers: string[];
+  correctAnswers: any[];
   options: QuestionOption[];
+  grid: QuestionGrid;
   required: boolean;
+  attached?: { image?: string };
 };
 
 export interface FormSettings {
   isQuiz: boolean;
-  
+
   allowSeeWrongAnswers: boolean;
   allowSeeCorrectAnswers: boolean;
   allowSeeScore: boolean;
-  
+
   defaultScoreValue: number;
-  
+
   shuffleQuestions: boolean;
-  
+
   allowSeeResult: boolean;
-  
+
   questionRequiredDefault: boolean; // complete
-  
+
   /* ====== TO ADDED NEXT ====== 
   
   releaseMarks: 'immediately' | 'later'; 
@@ -86,8 +101,7 @@ export interface FormSettings {
   
   disableAutosave: boolean;
   
-  */ 
-
+  */
 }
 
 // === SUBMISSION === //
@@ -114,8 +128,9 @@ export type SubmissionData = {
   title: string;
   description: string;
   submissionQuestions: SubmissionQuestion[];
-  score: number | null;
-  totalScore: number | null;
+  score: number;
+  totalScore: number;
+  settings: FormSettings;
 };
 
 export interface ClientSubmission extends Omit<
@@ -130,9 +145,11 @@ export type SubmissionQuestion = {
   title: string;
   type: QuestionType;
   options: QuestionOption[];
+  grid: QuestionGrid;
   required: boolean;
-  answers: any;
+  answers: any[];
   score: number | null;
   correctAnswers?: string[];
   totalScore?: number | null;
+  attached?: { image?: string };
 };

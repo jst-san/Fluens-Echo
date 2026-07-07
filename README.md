@@ -1,36 +1,216 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fluens Echo
 
-## Getting Started
+> A modern form builder powered by AI.
 
-First, run the development server:
+Fluens Echo is a modern web-based form builder that enables users to create, share, and analyze online forms with ease. Inspired by Google Forms, Fluens Echo focuses on providing a clean user experience while introducing AI-powered capabilities to streamline form creation.
+
+One of its flagship features is **PDF to Form Extraction**, allowing users to generate editable forms directly from PDF documents using AI. This feature is currently under development.
+
+---
+
+## ✨ Features
+
+* User authentication
+* Drag-and-drop form builder
+* Multiple question types
+* Share forms via public links
+* Collect responses in real time
+* Response analytics
+* AI-powered PDF to Form Extraction *(Work in Progress)*
+
+---
+
+## 📸 Screenshots
+
+> Replace the placeholders below with actual screenshots.
+
+### Dashboard
+
+```
+docs/screenshots/dashboard.png
+```
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+### Form Builder
+
+```
+docs/screenshots/form-builder.png
+```
+
+![Form Builder](docs/screenshots/form-builder.png)
+
+---
+
+### Form Preview
+
+```
+docs/screenshots/form-preview.png
+```
+
+![Form Preview](docs/screenshots/form-preview.png)
+
+---
+
+### Analytics
+
+```
+docs/screenshots/analytics.png
+```
+
+![Analytics Summary](docs/screenshots/analytics-summary.png)
+
+![Analytics Questions](docs/screenshots/analytics-questions.png)
+
+![Analytics Individual](docs/screenshots/analytics-individual.png)
+
+---
+
+### PDF → Form Extraction (Coming Soon)
+
+---
+
+## 🏗️ Tech Stack
+
+| Category       | Technology        |
+| -------------- | ----------------- |
+| Frontend       | Next.js + React   |
+| Backend        | Next.js           |
+| Database       | Supabase          |
+| Authentication | Supabase Auth     |
+| Image Storage  | Cloudinary        |
+| AI             | Google Gemini API |
+| PDF Parsing    | unpdf             |
+| Deployment     | Vercel            |
+
+---
+
+## 🚀 Getting Started
+
+### Clone the repository
+
+```bash
+git clone https://github.com/jst-san/Fluens-Echo.git
+cd Fluens-Echo
+```
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Configure environment variables
+
+Create a `.env.local` file and add the following variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+
+SUPABASE_SECRET_KEY=
+
+GOOGLE_AI_API_KEY=
+
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
+
+NEXT_PUBLIC_CLOUDINARY_API_KEY=
+
+CLOUDINARY_API_SECRET=
+```
+
+### Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your browser and visit:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📂 Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+Fluens-Echo
+├── app/
+├── docs/
+├── helpers/
+├── lib/
+├── public/
+├── stores/
+├── types/
+├── utils/
+├── package.json
+├── proxy.ts
+├── README.md
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🧠 PDF to Form Extraction
 
-## Deploy on Vercel
+The upcoming AI-powered PDF extraction feature is designed to convert PDF documents into editable online forms.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Planned workflow:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+PDF Document
+      │
+      ▼
+PDF Parsing (unpdf)
+      │
+      ▼
+Gemini API
+      │
+      ▼
+Structured Questions
+      │
+      ▼
+Editable Form Builder
+```
+
+> **Status:** 🚧 In Development
+
+---
+
+## 🛣️ Roadmap
+
+* [x] Authentication
+* [x] Form Builder
+* [x] Multiple Question Types
+* [x] Form Sharing
+* [x] Response Collection
+* [x] Response Analytics
+* [ ] PDF to Form Extraction
+* [ ] Improve AI-generated form accuracy
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+If you'd like to contribute:
+
+1. Fork this repository.
+2. Create a new feature branch.
+3. Commit your changes.
+4. Open a Pull Request.
+
+Please ensure your code follows the project's coding conventions and includes appropriate documentation where necessary.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+See the `LICENSE` file for more information.

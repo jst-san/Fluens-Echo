@@ -3,10 +3,19 @@
 import AlertModal from "@/app/components/ui/AlertModal";
 import { SecondaryBtn } from "@/app/components/ui/buttons";
 import { allowScroll, preventScroll } from "@/helpers/dom";
+import { AppError } from "@/lib/app-error";
 import { useFormEditorStore } from "@/stores/form-editor-store";
 import { EditorForm } from "@/types/form";
 import { JSX, useEffect, useRef, useState } from "react";
-import { LuCircleAlert, LuFile, LuSparkle, LuX } from "react-icons/lu";
+import {
+  LuCircleAlert,
+  LuFile,
+  LuSparkle,
+  LuSparkles,
+  LuX,
+} from "react-icons/lu";
+import { extractText } from "unpdf";
+import { useShallow } from "zustand/react/shallow";
 
 export default function ExtractPdf() {
   const [openAlert, setOpenAlert] = useState(false);
@@ -15,7 +24,9 @@ export default function ExtractPdf() {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const setForm = useFormEditorStore((s) => s.setForm);
+  const { shareToken, setForm } = useFormEditorStore(
+    useShallow((s) => ({ shareToken: s.form.shareToken, setForm: s.setForm })),
+  );
 
   const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
@@ -34,214 +45,40 @@ export default function ExtractPdf() {
 
     setFile(file);
   };
+
   const handleUpload = async () => {
     if (!file) return;
 
+    preventScroll()
     setLoading(true);
 
     try {
-      // 1. Secara dinamis me-load pdfjs-dist hanya di browser
-      const pdfjs = await import("pdfjs-dist");
-
-      // 2. Set worker secara lokal agar terhindar dari CORS
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/build/pdf.worker.mjs",
-        import.meta.url,
-      ).toString();
-
-      // 3. Baca file PDF dari input ke ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
 
-      // 4. Load dokumen PDF
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      console.log(`Total halaman: ${pdf.numPages}`);
+      const uint8Array = new Uint8Array(arrayBuffer);
 
-      interface PdfElement {
-        type: "text" | "image";
-        text?: string;
-        imgName?: string;
-        page?: any;
-        y: number;
-      }
-
-      let allElements: PdfElement[] = [];
-
-      // Loop per halaman untuk mengambil teks dan melacak koordinat Y
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-
-        const textContent = await page.getTextContent();
-        textContent.items.forEach((item: any) => {
-          if (item.str.trim()) {
-            const yPos = item.transform[5] * -1;
-            allElements.push({
-              type: "text",
-              text: item.str,
-              y: yPos + i * 10000,
-            });
-          }
-        });
-
-        const operatorList = await page.getOperatorList();
-        let currentYForImg = 0;
-
-        for (let j = 0; j < operatorList.fnArray.length; j++) {
-          if (operatorList.fnArray[j] === pdfjs.OPS.transform) {
-            currentYForImg = operatorList.argsArray[j][5] * -1;
-          }
-
-          if (operatorList.fnArray[j] === pdfjs.OPS.paintImageXObject) {
-            const imageName = operatorList.argsArray[j][0];
-            allElements.push({
-              type: "image",
-              imgName: imageName,
-              page: page,
-              y: currentYForImg + i * 10000,
-            });
-          }
-        }
-      }
-
-      // Urutkan berdasarkan posisi Y
-      allElements.sort((a, b) => a.y - b.y);
-
-      // LANGKAH 1: GABUNGKAN TEKS SEBARIS
-      let mergedElements: PdfElement[] = [];
-      let currentElement: PdfElement | null = null;
-      const Y_TOLERANCE = 5;
-
-      allElements.forEach((el) => {
-        if (!currentElement) {
-          currentElement = { ...el };
-          return;
-        }
-
-        if (
-          el.type === "text" &&
-          currentElement.type === "text" &&
-          Math.abs(el.y - currentElement.y) < Y_TOLERANCE
-        ) {
-          currentElement.text += " " + el.text;
-        } else {
-          mergedElements.push(currentElement);
-          currentElement = { ...el };
-        }
-      });
-      if (currentElement) mergedElements.push(currentElement);
-
-      // ========================================================
-      // LANGKAH 2: MATS (MAPPING) DAN FORMAT SESUAI RESPONSE SCHEMA
-      // ========================================================
-
-      interface OptionItem {
-        id: string;
-        title: string;
-      }
-      interface QuestionItem {
-        id: string;
-        title: string;
-        type: "text" | "radio" | "checkbox" | "select";
-        totalScore: number;
-        correctAnswers: string[];
-        options: OptionItem[];
-        required: boolean;
-        _tempImages?: any[]; // Menyimpan data gambar internal sementara sebelum di-upload
-      }
-
-      let questions: QuestionItem[] = [];
-      let currentQuestion: QuestionItem | null = null;
-
-      const questionRegex = /^(\d+)[.)\s\-]/;
-
-      mergedElements.forEach((el) => {
-        if (el.type === "text" && el.text) {
-          const trimmedText = el.text.trim();
-          const match = trimmedText.match(questionRegex);
-
-          if (match) {
-            if (currentQuestion) questions.push(currentQuestion);
-
-            // Inisialisasi awal objek Question sesuai dengan skema properti Anda
-            currentQuestion = {
-              id: `q-${Date.now()}-${match[1]}`,
-              title: trimmedText.replace(questionRegex, "").trim(),
-              type: "radio", // Default ke radio button (pilihan ganda tunggal)
-              totalScore: 0,
-              correctAnswers: [], // Diisi manual lewat UI/kunci jawaban nanti
-              options: [],
-              required: true, // Default wajib diisi
-              _tempImages: [],
-            };
-          } else {
-            if (currentQuestion) {
-              // Deteksi Opsi Pilihan Ganda (A., B., C., D.)
-              if (/^[A-D][.)\s]/.test(trimmedText)) {
-                // Bersihkan teks "A. " agar title opsi bersih
-                const optionTitle = trimmedText
-                  .replace(/^[A-D][.)\s]/, "")
-                  .trim();
-
-                currentQuestion.options.push({
-                  id: `o-${Date.now()}-${currentQuestion.options.length}`,
-                  title: optionTitle,
-                });
-              } else {
-                // Jika terdeteksi indikasi teks "Jawaban benar lebih dari satu" (Contoh di soal no 30 Anda)
-                if (trimmedText.toLowerCase().includes("lebih dari satu")) {
-                  currentQuestion.type = "checkbox";
-                }
-
-                // Gabungkan lanjutan narasi soal
-                currentQuestion.title += "\n" + trimmedText;
-              }
-            }
-          }
-        } else if (el.type === "image" && el.imgName) {
-          if (currentQuestion) {
-            currentQuestion._tempImages?.push({
-              imgName: el.imgName,
-              page: el.page,
-            });
-            // Opsional: Anda bisa tambahkan teks penanda gambar di dalam title soal
-            currentQuestion.title += `\n[Gambar: ${el.imgName}]`;
-          }
-        }
+      const { text } = await extractText(uint8Array, {
+        mergePages: true,
       });
 
-      if (currentQuestion) questions.push(currentQuestion);
+      console.log(text);
 
-      // Hitung total score (Contoh: Berikan nilai 5 untuk setiap butir soal yang berhasil diekstrak)
-      const DEFAULT_SCORE_PER_QUESTION = 1;
-      questions.forEach((q) => {
-        q.totalScore = DEFAULT_SCORE_PER_QUESTION;
+      const res = await fetch("/api/form/text-to-form", {
+        method: "post",
+        body: JSON.stringify({ extracted: text }),
       });
 
-      // Bungkus data ke dalam format Root Object sesuai dengan responseSchema Anda
-      const formattedResponseData = {
-        title: file.name.replace(".pdf", ""), // Mengambil judul dari nama file PDF
-        description: `Hasil impor otomatis dari file ${file.name} berisi ${questions.length} soal.`,
-        questions: questions.map(({ _tempImages, ...rest }) => rest), // Hapus property temporary gambar saat dilem ke state
-        settings: {
-          isQuiz: true,
-          allowSeeWrongAnswers: true,
-          allowSeeCorrectAnswers: true,
-          allowSeeScore: true,
-          defaultScoreValue: DEFAULT_SCORE_PER_QUESTION,
-          shuffleQuestions: false,
-          allowSeeResult: true,
-          questionRequiredDefault: true,
-        },
-        totalScore: questions.length * DEFAULT_SCORE_PER_QUESTION,
-      };
+      const { data, error } = await res.json();
 
-      console.log("Format JSON Sesuai Schema:", formattedResponseData);
+      if (error) {
+        throw new AppError(error);
+      }
 
-      // Silakan pasang ke state Anda di bawah ini
-      // setSchemaData(formattedResponseData);
-      setForm(formattedResponseData as EditorForm);
+      setForm({ ...data.form, shareToken });
     } catch (error) {
       console.error("Gagal memproses PDF:", error);
     } finally {
+      allowScroll()
       setLoading(false);
     }
   };
@@ -251,7 +88,7 @@ export default function ExtractPdf() {
         className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120`}
         onClick={() => {
           preventScroll();
-          setOpenAlert(true);
+          setOpenModal(true);
         }}
       >
         Ekstrak PDF
@@ -363,6 +200,20 @@ export default function ExtractPdf() {
                 Tutup
               </SecondaryBtn>
             </div>
+          </div>
+        </div>
+      )}
+      {loading && (
+        <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-xs flex items-center justify-center">
+          <div className="flex flex-col gap-6 items-center text-center">
+            <div>
+              <LuSparkle
+                className="rotate-15 stroke-0 fill-[#6f16ff] animate-[3s_bounce_ease-in-out_infinite]"
+                size={96}
+              />
+            </div>
+            <div className="text-xl animate-pulse">Mengekstrak</div>
+            <div className="mt-6 text-muted-darker">Powered by Gemini</div>
           </div>
         </div>
       )}

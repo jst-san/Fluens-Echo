@@ -44,6 +44,10 @@ export default function ExtractPdf() {
       return setUploadError("Hanya PDF yang diperbolehkan.");
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      return setUploadError("Ukuran file melebihi batas yang diperbolehkan");
+    }
+
     setFile(file);
   };
 
@@ -53,7 +57,7 @@ export default function ExtractPdf() {
     preventScroll();
     setLoading(true);
     try {
-      const session = await supabase.auth.getSession()
+      const session = await supabase.auth.getSession();
 
       const arrayBuffer = await file.arrayBuffer();
 
@@ -67,13 +71,13 @@ export default function ExtractPdf() {
         method: "post",
         body: JSON.stringify({ extracted: text }),
         headers: {
-          Authorization: `Bearer ${session.data.session?.access_token}`
-        }
+          Authorization: `Bearer ${session.data.session?.access_token}`,
+        },
       });
 
       if (!res.ok) {
-        const {error} = await res.json()
-        throw new AppError(error)
+        const { error } = await res.json();
+        throw new AppError(error);
       }
 
       const reader = res.body!.getReader();

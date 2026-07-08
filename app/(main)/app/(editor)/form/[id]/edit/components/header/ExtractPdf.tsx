@@ -1,21 +1,32 @@
 "use client";
 
-import AlertModal from "@/app/components/ui/AlertModal";
-import { SecondaryBtn } from "@/app/components/ui/buttons";
 import { allowScroll, preventScroll } from "@/helpers/dom";
+import { AppError } from "@/lib/app-error";
 import { useFormEditorStore } from "@/stores/form-editor-store";
 import { EditorForm } from "@/types/form";
-import { JSX, useEffect, useRef, useState } from "react";
-import { LuCircleAlert, LuFile, LuSparkle, LuX } from "react-icons/lu";
+import { useState } from "react";
+import { LuFile, LuSparkle, LuX } from "react-icons/lu";
+import { extractText } from "unpdf";
+import { useShallow } from "zustand/react/shallow";
+import { SupabaseAuthError } from "@/lib/supabase-auth-error";
+import { supabase } from "@/utils/supabase/client";
 
 export default function ExtractPdf() {
-  const [openAlert, setOpenAlert] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [error, setError] = useState<{
+    message: string;
+    code: string;
+  } | null>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
 
-  const setForm = useFormEditorStore((s) => s.setForm);
+  const { shareToken, setForm } = useFormEditorStore(
+    useShallow((s) => ({ shareToken: s.form.shareToken, setForm: s.setForm })),
+  );
 
   const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
@@ -27,231 +38,89 @@ export default function ExtractPdf() {
   const handleSetFile = (file: File | null) => {
     if (!file) return;
 
+    setUploadError(null);
+
     if (file.type !== "application/pdf") {
-      alert("Hanya PDF yang diperbolehkan");
-      return;
+      return setUploadError("Hanya PDF yang diperbolehkan.");
     }
 
     setFile(file);
   };
-  const handleUpload = async () => {
+
+  const handleExtract = async () => {
     if (!file) return;
 
+    preventScroll();
     setLoading(true);
-
     try {
-      // 1. Secara dinamis me-load pdfjs-dist hanya di browser
-      const pdfjs = await import("pdfjs-dist");
+      const session = await supabase.auth.getSession()
 
-      // 2. Set worker secara lokal agar terhindar dari CORS
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/build/pdf.worker.mjs",
-        import.meta.url,
-      ).toString();
-
-      // 3. Baca file PDF dari input ke ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
 
-      // 4. Load dokumen PDF
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      console.log(`Total halaman: ${pdf.numPages}`);
+      const uint8Array = new Uint8Array(arrayBuffer);
 
-      interface PdfElement {
-        type: "text" | "image";
-        text?: string;
-        imgName?: string;
-        page?: any;
-        y: number;
-      }
-
-      let allElements: PdfElement[] = [];
-
-      // Loop per halaman untuk mengambil teks dan melacak koordinat Y
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-
-        const textContent = await page.getTextContent();
-        textContent.items.forEach((item: any) => {
-          if (item.str.trim()) {
-            const yPos = item.transform[5] * -1;
-            allElements.push({
-              type: "text",
-              text: item.str,
-              y: yPos + i * 10000,
-            });
-          }
-        });
-
-        const operatorList = await page.getOperatorList();
-        let currentYForImg = 0;
-
-        for (let j = 0; j < operatorList.fnArray.length; j++) {
-          if (operatorList.fnArray[j] === pdfjs.OPS.transform) {
-            currentYForImg = operatorList.argsArray[j][5] * -1;
-          }
-
-          if (operatorList.fnArray[j] === pdfjs.OPS.paintImageXObject) {
-            const imageName = operatorList.argsArray[j][0];
-            allElements.push({
-              type: "image",
-              imgName: imageName,
-              page: page,
-              y: currentYForImg + i * 10000,
-            });
-          }
-        }
-      }
-
-      // Urutkan berdasarkan posisi Y
-      allElements.sort((a, b) => a.y - b.y);
-
-      // LANGKAH 1: GABUNGKAN TEKS SEBARIS
-      let mergedElements: PdfElement[] = [];
-      let currentElement: PdfElement | null = null;
-      const Y_TOLERANCE = 5;
-
-      allElements.forEach((el) => {
-        if (!currentElement) {
-          currentElement = { ...el };
-          return;
-        }
-
-        if (
-          el.type === "text" &&
-          currentElement.type === "text" &&
-          Math.abs(el.y - currentElement.y) < Y_TOLERANCE
-        ) {
-          currentElement.text += " " + el.text;
-        } else {
-          mergedElements.push(currentElement);
-          currentElement = { ...el };
-        }
+      const { text } = await extractText(uint8Array, {
+        mergePages: true,
       });
-      if (currentElement) mergedElements.push(currentElement);
 
-      // ========================================================
-      // LANGKAH 2: MATS (MAPPING) DAN FORMAT SESUAI RESPONSE SCHEMA
-      // ========================================================
-
-      interface OptionItem {
-        id: string;
-        title: string;
-      }
-      interface QuestionItem {
-        id: string;
-        title: string;
-        type: "text" | "radio" | "checkbox" | "select";
-        totalScore: number;
-        correctAnswers: string[];
-        options: OptionItem[];
-        required: boolean;
-        _tempImages?: any[]; // Menyimpan data gambar internal sementara sebelum di-upload
-      }
-
-      let questions: QuestionItem[] = [];
-      let currentQuestion: QuestionItem | null = null;
-
-      const questionRegex = /^(\d+)[.)\s\-]/;
-
-      mergedElements.forEach((el) => {
-        if (el.type === "text" && el.text) {
-          const trimmedText = el.text.trim();
-          const match = trimmedText.match(questionRegex);
-
-          if (match) {
-            if (currentQuestion) questions.push(currentQuestion);
-
-            // Inisialisasi awal objek Question sesuai dengan skema properti Anda
-            currentQuestion = {
-              id: `q-${Date.now()}-${match[1]}`,
-              title: trimmedText.replace(questionRegex, "").trim(),
-              type: "radio", // Default ke radio button (pilihan ganda tunggal)
-              totalScore: 0,
-              correctAnswers: [], // Diisi manual lewat UI/kunci jawaban nanti
-              options: [],
-              required: true, // Default wajib diisi
-              _tempImages: [],
-            };
-          } else {
-            if (currentQuestion) {
-              // Deteksi Opsi Pilihan Ganda (A., B., C., D.)
-              if (/^[A-D][.)\s]/.test(trimmedText)) {
-                // Bersihkan teks "A. " agar title opsi bersih
-                const optionTitle = trimmedText
-                  .replace(/^[A-D][.)\s]/, "")
-                  .trim();
-
-                currentQuestion.options.push({
-                  id: `o-${Date.now()}-${currentQuestion.options.length}`,
-                  title: optionTitle,
-                });
-              } else {
-                // Jika terdeteksi indikasi teks "Jawaban benar lebih dari satu" (Contoh di soal no 30 Anda)
-                if (trimmedText.toLowerCase().includes("lebih dari satu")) {
-                  currentQuestion.type = "checkbox";
-                }
-
-                // Gabungkan lanjutan narasi soal
-                currentQuestion.title += "\n" + trimmedText;
-              }
-            }
-          }
-        } else if (el.type === "image" && el.imgName) {
-          if (currentQuestion) {
-            currentQuestion._tempImages?.push({
-              imgName: el.imgName,
-              page: el.page,
-            });
-            // Opsional: Anda bisa tambahkan teks penanda gambar di dalam title soal
-            currentQuestion.title += `\n[Gambar: ${el.imgName}]`;
-          }
+      const res = await fetch("/api/form/text-to-form", {
+        method: "post",
+        body: JSON.stringify({ extracted: text }),
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`
         }
       });
 
-      if (currentQuestion) questions.push(currentQuestion);
+      if (!res.ok) {
+        const {error} = await res.json()
+        throw new AppError(error)
+      }
 
-      // Hitung total score (Contoh: Berikan nilai 5 untuk setiap butir soal yang berhasil diekstrak)
-      const DEFAULT_SCORE_PER_QUESTION = 1;
-      questions.forEach((q) => {
-        q.totalScore = DEFAULT_SCORE_PER_QUESTION;
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader?.read();
+        if (done) break;
+
+        result += decoder.decode(value);
+      }
+
+      let form = JSON.parse(result) as Omit<EditorForm, "shareToken">;
+
+      form.questions.forEach((q, idx) => {
+        if (idx === 0) form.totalScore = 0;
+        form.totalScore += q.totalScore;
+        if (q.type.startsWith("grid")) {
+          form.questions[idx].correctAnswers = q.correctAnswers.map(
+            (ca: string) => ca.split(",").map((t) => t.trim()),
+          );
+        }
       });
 
-      // Bungkus data ke dalam format Root Object sesuai dengan responseSchema Anda
-      const formattedResponseData = {
-        title: file.name.replace(".pdf", ""), // Mengambil judul dari nama file PDF
-        description: `Hasil impor otomatis dari file ${file.name} berisi ${questions.length} soal.`,
-        questions: questions.map(({ _tempImages, ...rest }) => rest), // Hapus property temporary gambar saat dilem ke state
-        settings: {
-          isQuiz: true,
-          allowSeeWrongAnswers: true,
-          allowSeeCorrectAnswers: true,
-          allowSeeScore: true,
-          defaultScoreValue: DEFAULT_SCORE_PER_QUESTION,
-          shuffleQuestions: false,
-          allowSeeResult: true,
-          questionRequiredDefault: true,
-        },
-        totalScore: questions.length * DEFAULT_SCORE_PER_QUESTION,
-      };
-
-      console.log("Format JSON Sesuai Schema:", formattedResponseData);
-
-      // Silakan pasang ke state Anda di bawah ini
-      // setSchemaData(formattedResponseData);
-      setForm(formattedResponseData as EditorForm);
-    } catch (error) {
-      console.error("Gagal memproses PDF:", error);
-    } finally {
+      setForm({ ...form, shareToken });
       setLoading(false);
+      allowScroll();
+    } catch (err) {
+      setLoading(false);
+      if (err instanceof AppError || err instanceof SupabaseAuthError) {
+        return setError({ message: err.message, code: err.code });
+      }
+      setError({
+        message: "Terjadi kesalahan, coba lagi",
+        code: "UNKNOWN_ERROR",
+      });
     }
   };
   return (
     <>
       <button
-        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120`}
+        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
         onClick={() => {
           preventScroll();
-          setOpenAlert(true);
+          setOpenModal(true);
         }}
       >
         Ekstrak PDF
@@ -261,7 +130,7 @@ export default function ExtractPdf() {
         <div className="fixed inset-0 z-999 flex items-center justify-center bg-black/10 backdrop-blur-sm">
           <div className="relative w-full max-w-md p-6 bg-foreground rounded-3xl space-y-6 border border-border shadow-lg">
             <button
-              className="absolute right-3 top-3 p-2 rounded-full transition-all hover:bg-brand-light/10"
+              className="absolute right-3 top-3 p-2 rounded-full transition-all hover:bg-muted-light active:bg-muted"
               onClick={() => {
                 allowScroll();
                 setOpenModal(false);
@@ -275,6 +144,11 @@ export default function ExtractPdf() {
                 Format yang didukung: pdf
               </div>
             </div>
+            {uploadError && (
+              <div className="min-h-12 px-5 py-3 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                {uploadError}
+              </div>
+            )}
             <label
               htmlFor="pdfInput"
               className={`${dragging && "bg-brand-light/10"} duration-300 block w-full rounded-lg border border-border`}
@@ -326,42 +200,87 @@ export default function ExtractPdf() {
             </label>
             <div className="flex justify-end">
               <button
-                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all`}
+                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
                 onClick={async () => {
-                  allowScroll();
                   setOpenModal(false);
-                  await handleUpload();
+                  await handleExtract();
                   setFile(null);
                 }}
               >
-                Generate
+                Ekstrak
                 <LuSparkle className="stroke-0 fill-foreground ml-0.5 mb-0.5" />
               </button>
             </div>
           </div>
         </div>
       )}
-      {openAlert && (
+
+      {error && (
         <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md p-10 rounded-4xl bg-foreground flex flex-col items-center text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-20 h-20 bg-amber-50 text-amber-300 rounded-full flex items-center justify-center mb-6">
-              <LuCircleAlert size={40} strokeWidth={3} />
+            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+              <LuX size={40} strokeWidth={3} />
             </div>
 
-            <h2 className="font-bold text-2xl mb-6">
-              Fitur ini belum tersedia
-            </h2>
+            <h2 className="font-bold text-2xl mb-6">Gagal mengekstrak PDF</h2>
 
-            <div className="w-full space-y-2">
-              <SecondaryBtn
-                className="w-full hover:text-amber-300! hover:border-amber-300!"
-                onClick={() => {
-                  allowScroll();
-                  setOpenAlert(false);
-                }}
-              >
-                Tutup
-              </SecondaryBtn>
+            <div className="text-left w-full space-y-4 mb-8">
+              <div>
+                <div className="text-sm font-medium text-muted-darker ml-2">
+                  Penyebab
+                </div>
+                <div className="min-h-12 px-5 py-3 mt-1 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                  {error.message}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-darker ml-2">
+                  Kode Error
+                </div>
+                <div className="min-h-12 px-5 py-3 mt-1 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                  {error.code}
+                </div>
+              </div>
+            </div>
+
+            <button
+              className="w-full h-14 bg-foreground border border-border rounded-full font-semibold hover:border-red-500 hover:text-red-500 hover:-translate-y-px transition-all"
+              onClick={() => {
+                setError(null);
+                allowScroll();
+              }}
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading && !error && (
+        <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-xs flex items-center justify-center">
+          <div className="w-full max-w-xl space-y-6">
+            <div className="flex gap-3 items-center justify-center relative z-1">
+              <div className="absolute -z-1 w-48 h-48 rounded-full border-t border-t-[#b516ff] drop-shadow-xs drop-shadow-brand animate-spin"></div>
+              <div className="absolute -z-1 w-38 h-38 rounded-full border-t border-t-[#6f16ff] drop-shadow-xs drop-shadow-brand animate-[1s_spin_linear_infinite_reverse]"></div>
+              <LuSparkle
+                className="stroke-0 fill-[#b516ff] drop-shadow-sm drop-shadow-[#b516ff] animate-[1.5s_scale-pulse_infinite_ease-in-out]"
+                size={24}
+              />
+              <LuSparkle
+                className="stroke-0 fill-[#6f16ff] drop-shadow-sm drop-shadow-[#6f16ff] animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.15s]"
+                size={24}
+              />
+              <LuSparkle
+                className="stroke-0 fill-brand drop-shadow-sm drop-shadow-brand animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.3s]"
+                size={24}
+              />
+            </div>
+          </div>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
+            <div className="text-muted-darker">Powered by Gemini</div>
+            <div className="text-sm text-muted-darker">
+              AI mungkin saja melakukan kesalahan. Silahkan tinjau kembali
+              formulir anda
             </div>
           </div>
         </div>

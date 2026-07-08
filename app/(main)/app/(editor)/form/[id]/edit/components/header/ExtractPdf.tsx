@@ -1,27 +1,27 @@
 "use client";
 
-import AlertModal from "@/app/components/ui/AlertModal";
-import { SecondaryBtn } from "@/app/components/ui/buttons";
 import { allowScroll, preventScroll } from "@/helpers/dom";
 import { AppError } from "@/lib/app-error";
 import { useFormEditorStore } from "@/stores/form-editor-store";
 import { EditorForm } from "@/types/form";
-import { JSX, useEffect, useRef, useState } from "react";
-import {
-  LuCircleAlert,
-  LuFile,
-  LuSparkle,
-  LuSparkles,
-  LuX,
-} from "react-icons/lu";
+import { useState } from "react";
+import { LuFile, LuSparkle, LuX } from "react-icons/lu";
 import { extractText } from "unpdf";
 import { useShallow } from "zustand/react/shallow";
+import { SupabaseAuthError } from "@/lib/supabase-auth-error";
+import { supabase } from "@/utils/supabase/client";
 
 export default function ExtractPdf() {
-  const [openAlert, setOpenAlert] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [error, setError] = useState<{
+    message: string;
+    code: string;
+  } | null>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
 
   const { shareToken, setForm } = useFormEditorStore(
@@ -38,21 +38,23 @@ export default function ExtractPdf() {
   const handleSetFile = (file: File | null) => {
     if (!file) return;
 
+    setUploadError(null);
+
     if (file.type !== "application/pdf") {
-      alert("Hanya PDF yang diperbolehkan");
-      return;
+      return setUploadError("Hanya PDF yang diperbolehkan.");
     }
 
     setFile(file);
   };
 
-  const handleUpload = async () => {
+  const handleExtract = async () => {
     if (!file) return;
 
-    preventScroll()
+    preventScroll();
     setLoading(true);
-
     try {
+      const session = await supabase.auth.getSession()
+
       const arrayBuffer = await file.arrayBuffer();
 
       const uint8Array = new Uint8Array(arrayBuffer);
@@ -61,31 +63,61 @@ export default function ExtractPdf() {
         mergePages: true,
       });
 
-      console.log(text);
-
       const res = await fetch("/api/form/text-to-form", {
         method: "post",
         body: JSON.stringify({ extracted: text }),
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`
+        }
       });
 
-      const { data, error } = await res.json();
-
-      if (error) {
-        throw new AppError(error);
+      if (!res.ok) {
+        const {error} = await res.json()
+        throw new AppError(error)
       }
 
-      setForm({ ...data.form, shareToken });
-    } catch (error) {
-      console.error("Gagal memproses PDF:", error);
-    } finally {
-      allowScroll()
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader?.read();
+        if (done) break;
+
+        result += decoder.decode(value);
+      }
+
+      let form = JSON.parse(result) as Omit<EditorForm, "shareToken">;
+
+      form.questions.forEach((q, idx) => {
+        if (idx === 0) form.totalScore = 0;
+        form.totalScore += q.totalScore;
+        if (q.type.startsWith("grid")) {
+          form.questions[idx].correctAnswers = q.correctAnswers.map(
+            (ca: string) => ca.split(",").map((t) => t.trim()),
+          );
+        }
+      });
+
+      setForm({ ...form, shareToken });
       setLoading(false);
+      allowScroll();
+    } catch (err) {
+      setLoading(false);
+      if (err instanceof AppError || err instanceof SupabaseAuthError) {
+        return setError({ message: err.message, code: err.code });
+      }
+      setError({
+        message: "Terjadi kesalahan, coba lagi",
+        code: "UNKNOWN_ERROR",
+      });
     }
   };
   return (
     <>
       <button
-        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120`}
+        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
         onClick={() => {
           preventScroll();
           setOpenModal(true);
@@ -98,7 +130,7 @@ export default function ExtractPdf() {
         <div className="fixed inset-0 z-999 flex items-center justify-center bg-black/10 backdrop-blur-sm">
           <div className="relative w-full max-w-md p-6 bg-foreground rounded-3xl space-y-6 border border-border shadow-lg">
             <button
-              className="absolute right-3 top-3 p-2 rounded-full transition-all hover:bg-brand-light/10"
+              className="absolute right-3 top-3 p-2 rounded-full transition-all hover:bg-muted-light active:bg-muted"
               onClick={() => {
                 allowScroll();
                 setOpenModal(false);
@@ -112,6 +144,11 @@ export default function ExtractPdf() {
                 Format yang didukung: pdf
               </div>
             </div>
+            {uploadError && (
+              <div className="min-h-12 px-5 py-3 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                {uploadError}
+              </div>
+            )}
             <label
               htmlFor="pdfInput"
               className={`${dragging && "bg-brand-light/10"} duration-300 block w-full rounded-lg border border-border`}
@@ -163,57 +200,88 @@ export default function ExtractPdf() {
             </label>
             <div className="flex justify-end">
               <button
-                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all`}
+                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
                 onClick={async () => {
-                  allowScroll();
                   setOpenModal(false);
-                  await handleUpload();
+                  await handleExtract();
                   setFile(null);
                 }}
               >
-                Generate
+                Ekstrak
                 <LuSparkle className="stroke-0 fill-foreground ml-0.5 mb-0.5" />
               </button>
             </div>
           </div>
         </div>
       )}
-      {openAlert && (
+
+      {error && (
         <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md p-10 rounded-4xl bg-foreground flex flex-col items-center text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-20 h-20 bg-amber-50 text-amber-300 rounded-full flex items-center justify-center mb-6">
-              <LuCircleAlert size={40} strokeWidth={3} />
+            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+              <LuX size={40} strokeWidth={3} />
             </div>
 
-            <h2 className="font-bold text-2xl mb-6">
-              Fitur ini belum tersedia
-            </h2>
+            <h2 className="font-bold text-2xl mb-6">Gagal mengekstrak PDF</h2>
 
-            <div className="w-full space-y-2">
-              <SecondaryBtn
-                className="w-full hover:text-amber-300! hover:border-amber-300!"
-                onClick={() => {
-                  allowScroll();
-                  setOpenAlert(false);
-                }}
-              >
-                Tutup
-              </SecondaryBtn>
+            <div className="text-left w-full space-y-4 mb-8">
+              <div>
+                <div className="text-sm font-medium text-muted-darker ml-2">
+                  Penyebab
+                </div>
+                <div className="min-h-12 px-5 py-3 mt-1 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                  {error.message}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-darker ml-2">
+                  Kode Error
+                </div>
+                <div className="min-h-12 px-5 py-3 mt-1 rounded-[20px] bg-red-50 border border-red-100 text-sm text-red-600">
+                  {error.code}
+                </div>
+              </div>
             </div>
+
+            <button
+              className="w-full h-14 bg-foreground border border-border rounded-full font-semibold hover:border-red-500 hover:text-red-500 hover:-translate-y-px transition-all"
+              onClick={() => {
+                setError(null);
+                allowScroll();
+              }}
+            >
+              Tutup
+            </button>
           </div>
         </div>
       )}
-      {loading && (
+
+      {loading && !error && (
         <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-xs flex items-center justify-center">
-          <div className="flex flex-col gap-6 items-center text-center">
-            <div>
+          <div className="w-full max-w-xl space-y-6">
+            <div className="flex gap-3 items-center justify-center relative z-1">
+              <div className="absolute -z-1 w-48 h-48 rounded-full border-t border-t-[#b516ff] drop-shadow-xs drop-shadow-brand animate-spin"></div>
+              <div className="absolute -z-1 w-38 h-38 rounded-full border-t border-t-[#6f16ff] drop-shadow-xs drop-shadow-brand animate-[1s_spin_linear_infinite_reverse]"></div>
               <LuSparkle
-                className="rotate-15 stroke-0 fill-[#6f16ff] animate-[3s_bounce_ease-in-out_infinite]"
-                size={96}
+                className="stroke-0 fill-[#b516ff] drop-shadow-sm drop-shadow-[#b516ff] animate-[1.5s_scale-pulse_infinite_ease-in-out]"
+                size={24}
+              />
+              <LuSparkle
+                className="stroke-0 fill-[#6f16ff] drop-shadow-sm drop-shadow-[#6f16ff] animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.15s]"
+                size={24}
+              />
+              <LuSparkle
+                className="stroke-0 fill-brand drop-shadow-sm drop-shadow-brand animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.3s]"
+                size={24}
               />
             </div>
-            <div className="text-xl animate-pulse">Mengekstrak</div>
-            <div className="mt-6 text-muted-darker">Powered by Gemini</div>
+          </div>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
+            <div className="text-muted-darker">Powered by Gemini</div>
+            <div className="text-sm text-muted-darker">
+              AI mungkin saja melakukan kesalahan. Silahkan tinjau kembali
+              formulir anda
+            </div>
           </div>
         </div>
       )}

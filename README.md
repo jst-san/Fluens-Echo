@@ -1,114 +1,144 @@
 # Fluens Echo
 
-> A modern form builder powered by AI.
+> **A modern form builder powered by AI.**
 
 Fluens Echo is a modern web-based form builder that enables users to create, share, and analyze online forms with ease. Inspired by Google Forms, Fluens Echo focuses on providing a clean user experience while introducing AI-powered capabilities to streamline form creation.
 
-One of its flagship features is **PDF to Form Extraction**, allowing users to generate editable forms directly from PDF documents using AI. This feature is currently under development.
+One of its flagship features is **PDF to Form Extraction**, allowing users to generate editable forms directly from PDF documents using AI.
 
 ---
 
-## ✨ Features
+## 🚀 Features
 
-* User authentication
-* Drag-and-drop form builder
-* Multiple question types
-* Share forms via public links
-* Collect responses in real time
-* Response analytics
-* AI-powered PDF to Form Extraction *(Work in Progress)*
+- ✅ User authentication
+- ✅ Drag-and-drop form builder
+- ✅ Multiple question types
+- ✅ Share forms via public links
+- ✅ Collect responses in real time
+- ✅ Response analytics
+- ✅ AI-powered PDF to Form Extraction
 
 ---
 
-## 📸 Screenshots
+# 📸 Screenshots
 
-### Dashboard
+## 🏠 Dashboard
 
-```
+```text
 docs/screenshots/dashboard.png
 ```
 
-![Dashboard](docs/screenshots/dashboard.png)
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard">
+</p>
 
 ---
 
-### Form Builder
+## 🛠️ Form Builder
 
-```
+```text
 docs/screenshots/form-builder.png
 ```
 
-![Form Builder](docs/screenshots/form-builder.png)
+<p align="center">
+  <img src="docs/screenshots/form-builder.png" alt="Form Builder">
+</p>
 
 ---
 
-### Form Preview
+## 👀 Form Preview
 
-```
+```text
 docs/screenshots/form-preview.png
 ```
 
-![Form Preview](docs/screenshots/form-preview.png)
+<p align="center">
+  <img src="docs/screenshots/form-preview.png" alt="Form Preview">
+</p>
 
 ---
 
-### Analytics
+## 📊 Analytics
 
-```
+### Summary
+
+```text
 docs/screenshots/analytics-summary.png
 ```
 
-![Analytics Summary](docs/screenshots/analytics-summary.png)
+<p align="center">
+  <img src="docs/screenshots/analytics-summary.png" alt="Analytics Summary">
+</p>
 
-```
+### Questions
+
+```text
 docs/screenshots/analytics-questions.png
 ```
 
-![Analytics Questions](docs/screenshots/analytics-questions.png)
+<p align="center">
+  <img src="docs/screenshots/analytics-questions.png" alt="Analytics Questions">
+</p>
 
-```
+### Individual Responses
+
+```text
 docs/screenshots/analytics-individual.png
 ```
 
-![Analytics Individual](docs/screenshots/analytics-individual.png)
+<p align="center">
+  <img src="docs/screenshots/analytics-individual.png" alt="Analytics Individual">
+</p>
 
 ---
 
-### PDF → Form Extraction (Coming Soon)
+## ✨ PDF → Form Extraction
+
+```text
+docs/gifs/pdf-to-form-extraction.gif
+```
+
+<p align="center">
+  <img src="docs/gifs/pdf-to-form-extraction.gif" alt="PDF to Form Extraction">
+</p>
 
 ---
 
-## 🏗️ Tech Stack
+# 🏗️ Tech Stack
 
-| Category       | Technology        |
-| -------------- | ----------------- |
-| Frontend       | Next.js + React   |
-| Backend        | Next.js           |
-| Database       | Supabase          |
-| Authentication | Supabase Auth     |
-| Image Storage  | Cloudinary        |
-| AI             | Google Gemini API |
-| PDF Parsing    | unpdf             |
-| Deployment     | Vercel            |
+| Category | Technology |
+| :-------- | :--------- |
+| **Frontend** | <img src="https://cdn.simpleicons.org/nextdotjs" alt="Next.js" width="18" valign="middle"> Next.js + <img src="https://cdn.simpleicons.org/react" alt="React" width="18" valign="middle"> React |
+| **Backend** | <img src="https://cdn.simpleicons.org/nextdotjs" alt="Next.js" width="18" valign="middle"> Next.js |
+| **Database** | <img src="https://cdn.simpleicons.org/supabase" alt="Supabase" width="18" valign="middle"> Supabase |
+| **Authentication** | <img src="https://cdn.simpleicons.org/supabase" alt="Supabase" width="18" valign="middle"> Supabase Auth |
+| **Image Storage** | <img src="https://cdn.simpleicons.org/cloudinary" alt="Cloudinary" width="18" valign="middle"> Cloudinary |
+| **AI** | <img src="https://cdn.simpleicons.org/googlegemini" alt="Google Gemini" width="18" valign="middle"> Google Gemini API |
+| **PDF Parsing** | 📄 unpdf |
+| **Deployment** | <img src="https://cdn.simpleicons.org/vercel" alt="Vercel" width="18" valign="middle"> Vercel |
 
 ---
 
-## 🚀 Getting Started
+# 🚀 Getting Started
 
-### Clone the repository
+## 1️⃣ Clone the repository
 
 ```bash
 git clone https://github.com/jst-san/Fluens-Echo.git
 cd Fluens-Echo
 ```
 
-### Install dependencies
+---
+
+## 2️⃣ Install dependencies
 
 ```bash
 npm install
 ```
 
-### Configure environment variables
+---
+
+## 3️⃣ Configure environment variables
 
 Create a `.env.local` file and add the following variables:
 
@@ -128,7 +158,9 @@ NEXT_PUBLIC_CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 ```
 
-### Start the development server
+---
+
+## 4️⃣ Start the development server
 
 ```bash
 npm run dev
@@ -136,15 +168,15 @@ npm run dev
 
 Open your browser and visit:
 
-```
+```text
 http://localhost:3000
 ```
 
 ---
 
-## 📂 Project Structure
+# 📂 Project Structure
 
-```
+```text
 Fluens-Echo
 ├── app/
 ├── docs/
@@ -161,46 +193,7 @@ Fluens-Echo
 
 ---
 
-## 🧠 PDF to Form Extraction
-
-The upcoming AI-powered PDF extraction feature is designed to convert PDF documents into editable online forms.
-
-Planned workflow:
-
-```
-PDF Document
-      │
-      ▼
-PDF Parsing (unpdf)
-      │
-      ▼
-Gemini API
-      │
-      ▼
-Structured Questions
-      │
-      ▼
-Editable Form Builder
-```
-
-> **Status:** 🚧 In Development
-
----
-
-## 🛣️ Roadmap
-
-* [x] Authentication
-* [x] Form Builder
-* [x] Multiple Question Types
-* [x] Form Sharing
-* [x] Response Collection
-* [x] Response Analytics
-* [ ] PDF to Form Extraction
-* [ ] Improve AI-generated form accuracy
-
----
-
-## 🤝 Contributing
+# 🤝 Contributing
 
 Contributions are welcome.
 
@@ -215,7 +208,7 @@ Please ensure your code follows the project's coding conventions and includes ap
 
 ---
 
-## 📄 License
+# 📄 License
 
 This project is licensed under the MIT License.
 

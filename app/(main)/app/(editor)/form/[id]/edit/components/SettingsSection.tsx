@@ -163,8 +163,7 @@ export default function SettingsSection() {
               <div className="">
                 <div>Melihat poin pertanyaan</div>
                 <div className="text-xs text-muted-darker">
-                  Melihat jumlah poin pada setiap pertanyaan saat sedang mengisi
-                  form.
+                  Melihat jumlah poin setiap pertanyaan di ringkasan hasil.
                 </div>
               </div>
               <div>

@@ -7,9 +7,7 @@ import { Question as TQuestion } from "@/types/form";
 import { useShallow } from "zustand/react/shallow";
 import Textarea from "react-textarea-autosize";
 import QuestionSettings from "./QuestionSettings";
-import {
-  LuPlus,
-} from "react-icons/lu";
+import { LuPlus, LuTrash, LuTrash2, LuX } from "react-icons/lu";
 import QuestionCard from "@/app/components/ui/form/QuestionCard";
 import { PrimaryBtn, ToggleBtn } from "@/app/components/ui/buttons";
 import { NumberInput } from "@/app/components/ui/inputs";
@@ -69,10 +67,18 @@ export default function EditorQuestion({
           <div className="flex justify-between items-start mb-6 gap-4 relative z-80">
             <div className="flex-1 flex flex-col gap-6">
               {q.attached?.image && (
-                <img
-                  className="w-full max-w-7/10 mx-auto"
-                  src={q.attached.image}
-                />
+                <div className="relative w-full max-w-7/10 mx-auto group/img">
+                  <img className="w-full" src={q.attached.image} />
+                  <button
+                    className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 backdrop-blur-xs opacity-0 transition-opacity group-hover/img:opacity-100 group-hover/img:pointer-events-auto group-focus-within/img:opacity-100 group-focus-within/img:pointer-events-auto"
+                    onClick={() => updateQuestion(q.id, {attached: {...q.attached, image: undefined }})}
+                  >
+                    <LuX className="text-muted-darker/70 stroke-1" size={80} />
+                    <div className="text-sm text-center text-muted-darker/70">
+                      Hapus gambar
+                    </div>
+                  </button>
+                </div>
               )}
               <Textarea
                 className="w-full leading-[1.7] overflow-hidden resize-none outline-none focus-within:bg-muted-light"

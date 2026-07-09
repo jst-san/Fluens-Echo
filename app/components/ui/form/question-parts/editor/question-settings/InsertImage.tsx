@@ -25,9 +25,9 @@ export default function InsertImage({ qId }: { qId: string }) {
             insertToQuestion(qId, {image: result.info.secure_url})
           }
         }}
-        // onQueuesEnd={(result, { widget }) => {
-        //   widget.close();
-        // }}
+        onQueuesEnd={(result, { widget }) => {
+          widget.close();
+        }}
       >
         <LuImage size={18} className="text-brand" /> Gambar
       </CldUploadButton>

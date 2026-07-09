@@ -1,34 +1,21 @@
 "use client";
 
 import { useFormEditorStore } from "@/stores/form-editor-store";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {  useRouter } from "next/navigation";
 import { useContext, useEffect, useRef, useState } from "react";
 import { TabContext } from "../page";
-import { PrimaryBtn, SecondaryBtn } from "@/app/components/ui/buttons";
+import { PrimaryBtn } from "@/app/components/ui/buttons";
 import { useShallow } from "zustand/react/shallow";
 import {
-  LuArrowDownToLine,
   LuCheck,
   LuChevronDown,
   LuChevronUp,
-  LuClipboard,
-  LuClipboardCopy,
   LuCopy,
-  LuCopyleft,
-  LuCopyright,
-  LuDock,
   LuEllipsisVertical,
-  LuFile,
-  LuFileDown,
-  LuFilePlus,
-  LuFilePlus2,
-  LuFileQuestion,
   LuLogOut,
   LuRefreshCcw,
-  LuSave,
 } from "react-icons/lu";
-import { FaCheck, FaCopy, FaHandSparkles, FaSave } from "react-icons/fa";
+import {  FaSave } from "react-icons/fa";
 import ImportQuestion from "./header/ImportQuestion";
 import { formatTimestamp } from "@/helpers/timestamp-formatter";
 import ExtractPdf from "./header/ExtractPdf";

@@ -170,7 +170,7 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
         .eq("share_token", form.shareToken)
         .eq("creator_id", uid)
         .select(
-          "title, description, share_token, questions, settings, total_score",
+          "title, description, share_token, questions, settings, total_score, updated_at, created_at",
         )
         .single();
 
@@ -190,7 +190,7 @@ export const useFormEditorStore = create<FormEditorStore>((set, get) => ({
           total_score: totalScore ?? null,
         })
         .select(
-          "title, description, share_token, questions, settings, total_score",
+          "title, description, share_token, questions, settings, total_score, updated_at, created_at",
         )
         .single();
 

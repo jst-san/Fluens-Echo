@@ -1,19 +1,23 @@
-import {
-  CookieMethodsServerDeprecated,
-  CookieOptionsWithName,
-  createServerClient,
-} from "@supabase/ssr";
-import { SupabaseClientOptions } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
-export const createSupabaseServerClient = (options: Options) =>
-  createServerClient(
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    options,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            cookieStore.set(name, value);
+          });
+        },
+      },
+    }
   );
-
-type Options = SupabaseClientOptions<"public"> & {
-  cookieOptions?: CookieOptionsWithName;
-  cookies: CookieMethodsServerDeprecated;
-  cookieEncoding?: "raw" | "base64url";
-};
+}

@@ -17,6 +17,7 @@ One of its flagship features is **PDF to Form Extraction**, allowing users to ge
 - ✅ Collect responses in real time
 - ✅ Response analytics
 - ✅ AI-powered PDF to Form Extraction
+- 🔧 Article (upcoming)
 
 ---
 

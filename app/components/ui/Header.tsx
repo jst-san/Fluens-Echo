@@ -1,12 +1,11 @@
-import Link from "next/link";
-import { PrimaryBtn } from "./buttons";
-import { FaThList } from "react-icons/fa";
+import { PrimaryAnchorBtn } from "./anchor-buttons";
+import MobileNav from "./MobileNav";
 
 export default function Header() {
   return (
-    <header className="px-6 sm:px-16 sticky top-0 z-999">
+    <header className="bg-foreground/90 border-b border-border px-6 sm:px-16 sticky top-0 z-999">
       <div className="content h-20 flex justify-between items-center">
-        <a className="flex items-center sm:w-48" href="/">
+        <a className="flex items-center sm:w-36" href="/">
           <img className="w-16" src="/fluens.png" />
           <div className="ml-2">
             <div className="font-black tracking-widest leading-5 text-2xl text-transparent bg-linear-to-bl from-brand-light via-brand to-brand-dark bg-clip-text">
@@ -18,40 +17,29 @@ export default function Header() {
             </div>
           </div>
         </a>
-        <nav className="flex gap-3 sm:gap-6">
-          <Link
+        <nav className="hidden sm:flex gap-12">
+          <a
             className="text-sm transition-colors hover:text-muted-darker active:text-brand"
             href="/"
-            as="/"
           >
             Beranda
-          </Link>
+          </a>
           <a
             className="text-sm transition-colors hover:text-muted-darker active:text-brand"
             href="/#features"
           >
             Fitur
           </a>
-          <Link
+          <a
             className="text-sm transition-colors hover:text-muted-darker active:text-brand"
             href="/app"
-            as="/app"
           >
             Dashboard
-          </Link>
-          <Link
-            className="text-sm transition-colors hover:text-muted-darker active:text-brand"
-            href="#"
-            as="/articles"
-          >
-            Artikel
-          </Link>
+          </a>
         </nav>
-        <div className="sm:w-48">
-          <PrimaryBtn
-          >
-            Ayo mulai
-          </PrimaryBtn>
+        <MobileNav />
+        <div className="hidden sm:block sm:w-36">
+          <PrimaryAnchorBtn className="justify-self-end w-max h-max py-3 px-6" href="/app">Ayo mulai</PrimaryAnchorBtn>
         </div>
       </div>
     </header>

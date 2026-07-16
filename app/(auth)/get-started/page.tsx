@@ -17,9 +17,9 @@ export default function GetStartedPage() {
 
   return (
     <div className="container py-0 bg-linear-to-bl from-brand-light via-brand to-brand-dark min-h-screen relative z-1">
-      <div className="absolute -z-1 top-0 left-0 rotate-x-180 rotate-y-180 w-full h-2/10 bg-brand-light/25 [clip-path:shape(from_0_100%,vline_to_0,curve_to_37.5%_5rem_with_25%_5rem,curve_to_62.5%_3rem_with_50%_5rem,curve_to_100%_0_with_75%_1rem,vline_to_100%,_hline_to_0)]"></div>
-      <div className="absolute -z-1 bottom-0 left-0 w-full h-4/10 bg-brand-light/25 [clip-path:shape(from_0_100%,vline_to_0,curve_to_37.5%_5rem_with_25%_5rem,curve_to_62.5%_3rem_with_50%_5rem,curve_to_100%_0_with_75%_1rem,vline_to_100%,_hline_to_0)]"></div>
-      <div className="absolute -z-1 bottom-0 left-0 w-full h-3/10 bg-brand-light/25 [clip-path:shape(from_0_100%,vline_to_0,curve_to_37.5%_5rem_with_25%_5rem,curve_to_62.5%_3rem_with_50%_5rem,curve_to_100%_0_with_75%_1rem,vline_to_100%,_hline_to_0)]"></div>
+      <div className="absolute -z-1 top-0 left-0 rotate-x-180 rotate-y-180 w-full h-2/10 bg-brand-light/25 shape-wave"></div>
+      <div className="absolute -z-1 bottom-0 left-0 w-full h-4/10 bg-brand-light/25 shape-wave"></div>
+      <div className="absolute -z-1 bottom-0 left-0 w-full h-3/10 bg-brand-light/25 shape-wave"></div>
 
       <div className="fixed z-999 inset-0 w-max h-max p-3 pr-6 pb-6 overflow-hidden">
         <button
@@ -36,12 +36,12 @@ export default function GetStartedPage() {
           <div className="space-y-6">
             <div className="relative">
               <h1
-                className={`${!["register", "verification"].includes(action) && "translate-y-10 opacity-0"} transition-all duration-300 absolute max-w-2xl text-7xl text-foreground font-bold text-shadow-sm text-shadow-brand-light`}
+                className={`${!["register", "verification"].includes(action) && "translate-y-10 opacity-0"} transition-all duration-300 absolute max-w-2xl text-7xl text-foreground font-bold text-shadow-xs md:text-shadow-sm text-shadow-brand-light`}
               >
                 Halo, Pengguna Baru!
               </h1>
               <h1
-                className={`${!["login", "forget-password"].includes(action) && "translate-y-10 opacity-0"} transition-all duration-300 max-w-2xl text-7xl text-foreground font-bold text-shadow-sm text-shadow-brand-light`}
+                className={`${!["login", "forget-password"].includes(action) && "translate-y-10 opacity-0"} transition-all duration-300 max-w-2xl text-7xl text-foreground font-bold text-shadow-xs md:text-shadow-sm text-shadow-brand-light`}
               >
                 Selamat Datang Kembali!
               </h1>

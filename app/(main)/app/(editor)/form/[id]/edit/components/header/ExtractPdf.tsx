@@ -121,7 +121,7 @@ export default function ExtractPdf() {
   return (
     <>
       <button
-        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
+        className={`h-10 px-3 sm:px-4 bg-linear-to-t from-accent via-accent-dark to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
         onClick={() => {
           preventScroll();
           setOpenModal(true);
@@ -204,7 +204,7 @@ export default function ExtractPdf() {
             </label>
             <div className="flex justify-end">
               <button
-                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-[#b516ff] via-[#6f16ff] to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
+                className={`h-10 px-3 sm:px-4 bg-linear-to-t from-accent via-accent-dark to-brand flex items-center text-foreground border border-border text-xs rounded-lg font-semibold transition-all duration-300 hover:brightness-120 active:brightness-110`}
                 onClick={async () => {
                   setOpenModal(false);
                   await handleExtract();
@@ -264,14 +264,14 @@ export default function ExtractPdf() {
         <div className="fixed inset-0 z-999 bg-black/10 backdrop-blur-xs flex items-center justify-center">
           <div className="w-full max-w-xl space-y-6">
             <div className="flex gap-3 items-center justify-center relative z-1">
-              <div className="absolute -z-1 w-48 h-48 rounded-full border-t border-t-[#b516ff] drop-shadow-xs drop-shadow-brand animate-spin"></div>
-              <div className="absolute -z-1 w-38 h-38 rounded-full border-t border-t-[#6f16ff] drop-shadow-xs drop-shadow-brand animate-[1s_spin_linear_infinite_reverse]"></div>
+              <div className="absolute -z-1 w-48 h-48 rounded-full border-t border-t-accent drop-shadow-xs drop-shadow-brand animate-spin"></div>
+              <div className="absolute -z-1 w-38 h-38 rounded-full border-t border-t-accent-dark drop-shadow-xs drop-shadow-brand animate-[1s_spin_linear_infinite_reverse]"></div>
               <LuSparkle
-                className="stroke-0 fill-[#b516ff] drop-shadow-sm drop-shadow-[#b516ff] animate-[1.5s_scale-pulse_infinite_ease-in-out]"
+                className="stroke-0 fill-accent drop-shadow-sm drop-shadow-accent animate-[1.5s_scale-pulse_infinite_ease-in-out]"
                 size={24}
               />
               <LuSparkle
-                className="stroke-0 fill-[#6f16ff] drop-shadow-sm drop-shadow-[#6f16ff] animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.15s]"
+                className="stroke-0 fill-accent-dark drop-shadow-sm drop-shadow-accent-dark animate-[1.5s_scale-pulse_infinite_ease-in-out] [animation-delay:0.15s]"
                 size={24}
               />
               <LuSparkle

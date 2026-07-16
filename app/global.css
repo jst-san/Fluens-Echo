@@ -13,6 +13,8 @@
   --muted: #e2e8f0;
   --muted-dark: #d0d8e2;
   --muted-darker: #64748b;
+  --accent: #b516ff;
+  --accent-dark: #6f16ff;
 }
 
 *::-webkit-scrollbar {
@@ -35,6 +37,8 @@
   --color-muted: #e2e8f0;
   --color-muted-dark: #d0d8e2;
   --color-muted-darker: #64748b;
+  --color-accent: #b516ff;
+  --color-accent-dark: #6f16ff;
   --font-sans: var(--font-inter), sans;
 }
 
@@ -71,5 +75,9 @@ body {
 
   .content {
     @apply max-w-7xl mx-auto w-full;
+  }
+
+  .shape-wave {
+    clip-path: shape(from 0 100%, vline to 0, curve to 37.5% 5rem with 25% 5rem, curve to 62.5% 3rem with 50% 5rem, curve to 100% 0 with 75% 1rem, vline to 100%, hline to 0);
   }
 }

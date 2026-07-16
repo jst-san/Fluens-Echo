@@ -34,11 +34,6 @@ export async function updateSession(req: NextRequest) {
   const url = req.nextUrl.clone()
   const currentPath = req.nextUrl.pathname
 
-  if (currentPath === "/") {
-    url.pathname = user ? "/app" : "/get-started"
-    return NextResponse.redirect(url)
-  }
-
   if (!user && currentPath.startsWith('/app')) {
     url.pathname = '/get-started'
     return NextResponse.redirect(url)
